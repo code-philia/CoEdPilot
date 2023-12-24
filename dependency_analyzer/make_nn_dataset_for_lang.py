@@ -10,30 +10,37 @@ from codegraph import CodeGraph
 CUR_DIR = os.path.dirname(__file__)
 
 # ENRE 可执行文件的路径
-ENRE_JAVA = os.path.join(CUR_DIR, "enre_out", "java", "enre_java_1.2.4.jar")
-ENRE_PYTHON = os.path.join(CUR_DIR, "enre_out", "python", "enre-zdh-stable.exe")
+ENRE_EXECUTABLES = {
+    "java": os.path.join(CUR_DIR, "enre_out", "java", "enre_java_1.2.4.jar"),
+    "python": os.path.join(CUR_DIR, "enre_out", "java", "enre_java_1.2.4.jar"),
+    "javascript": os.path.join(CUR_DIR, "enre_out", "typescript", "enre-ts-0.0.1-gamma.js"),
+    "go": os.path.join(CUR_DIR, "enre_out", "go", "enre_java_1.2.4.jar")
+}
 
 # 存放仓库的路径
-REPO_FOLDER = os.path.join(CUR_DIR, "dataset", "repo")
+REPO_FOLDER = os.path.join(CUR_DIR, "repo")
 
 def get_repo_name_from_url(repo_url):
     return re.search(r"/([^/]*?)(.git)?$", repo_url)[1]
 
-def get_repo_dir(repo_name, repo_type):
-    return os.path.join(REPO_FOLDER, repo_type, repo_name)
+def get_repo_dir(repo_name, lang):
+    return os.path.join(REPO_FOLDER, lang, repo_name)
 
-def get_enre_out_file_dir(repo_type):
-    return os.path.join(CUR_DIR, "enre_out", f"{repo_type}")
+def get_enre_out_file_dir(lang):
+    return os.path.join(CUR_DIR, "enre_out", f"{lang}")
 
 # 因 ENRE 无法指定路径，不同语言的 ENRE 分析器的固定输出路径
 
-def get_enre_out_file_path(repo_name, repo_type):
-    if repo_type == "java":
-        return os.path.join(get_enre_out_file_dir(repo_type), f'{repo_name}-enre-out', f'{repo_name}-out.json')
-    elif repo_type == "python":
-        return os.path.join(get_enre_out_file_dir(repo_type), f'{repo_name}-report-enre.json')
-    else:
-        raise NotImplementedError("get_enre_out_file_path only supporting [java, python]")
+def get_enre_out_file_path(repo_name, lang):
+    match lang:
+        case "java":
+            return os.path.join(get_enre_out_file_dir(lang), f'{repo_name}-enre-out', f'{repo_name}-out.json')
+        case "python":
+            return os.path.join(get_enre_out_file_dir(lang), f'{repo_name}-report-enre.json')
+        case "javascript":
+            return os.path.join(get_enre_out_file_dir(lang), f'{repo_name}-report-enre.json')
+        case _:
+            raise NotImplementedError("get_enre_out_file_path only supporting [java, python]")
 
 # acquire all files in the dataset
 def get_files(repo_dir):
@@ -54,50 +61,50 @@ def sys_exec_cmd(cmd):
 
 # 下载仓库
 
-def clone_repo(repo_url: str, repo_type):
-    repo_type_dir = os.path.join(REPO_FOLDER, repo_type)
-    os.makedirs(repo_type_dir, exist_ok=True)
+def clone_repo(repo_url: str, lang):
+    lang_dir = os.path.join(REPO_FOLDER, lang)
+    os.makedirs(lang_dir, exist_ok=True)
     
-    repo_dir = get_repo_dir(get_repo_name_from_url(repo_url), repo_type)
+    repo_dir = get_repo_dir(get_repo_name_from_url(repo_url), lang)
     if os.path.isdir(repo_dir):
         print(f"Ignoring {repo_url}. Repo already cloned")
         return repo_dir
     
     if not repo_url.endswith(".git"):
         repo_url += ".git"
-    clone_command = f'cd "{repo_type_dir}" && git clone "{repo_url}"'
+    clone_command = f'cd "{lang_dir}" && git clone "{repo_url}"'
     sys_exec_cmd(clone_command)
     print(f"Cloned repo: {repo_url} at {repo_dir}")
     return repo_dir
 
 # 运行 ENRE 并生成依赖分析文件
 
-def generate_java_dep(repo_name):
-    repo_dir = get_repo_dir(repo_name, "java")
-    out_file_path = get_enre_out_file_path(repo_name, "java")
-    enre_command = f'jcd "{get_enre_out_file_dir("java")}" && ava -jar "{ENRE_JAVA}" java "{repo_dir}" {repo_name}"'
-    sys_exec_cmd(enre_command)
-    print(f'ENRE generated java dep for "{repo_name}" at {out_file_path}')
+ENRE_COMMAND_PATTERNS = {
+    "java": 'java -jar "{exec_file}" java "{repo_dir}" {repo_name}"',
+    "python": '{exec_file} "{repo_dir}" --cg',
+    # "javascript": 'node {exec_file} -i {repo_dir} -v -o {repo_name}-report-enre.json',
+    "javascript": 'node {exec_file} -i {repo_dir} -v',
+    "go": ""
+}
 
-def generate_python_dep(repo_name):
-    repo_dir = get_repo_dir(repo_name, "python")
-    out_file_path = get_enre_out_file_path(repo_name, "python")
-    enre_command = f'cd "{get_enre_out_file_dir("python")}" && {ENRE_PYTHON} "{repo_dir}" --cg'
-    sys_exec_cmd(enre_command)
-    print(f'ENRE generated python dep for "{repo_name}" at {out_file_path}')
+def general_generate_dep_for_lang(repo_name, lang):
+    if lang not in ENRE_COMMAND_PATTERNS:
+        raise NotImplementedError(f"generate_dep only supporting {[ENRE_COMMAND_PATTERNS.keys()]}")
 
-def generate_dep(repo_name, repo_type):
-    enre_out_path = get_enre_out_file_path(repo_name, repo_type)
+    repo_dir = get_repo_dir(repo_name, lang)
+    out_file_path = get_enre_out_file_path(repo_name, lang)
+    exec_file = ENRE_EXECUTABLES[lang]
+    enre_command = f'cd "{get_enre_out_file_dir(lang)}" && ' + ENRE_COMMAND_PATTERNS[lang].format(exec_file=exec_file, repo_dir=repo_dir, repo_name=repo_name)
+    sys_exec_cmd(enre_command)
+    print(f'ENRE {lang}: generated dep for "{repo_name}" at {out_file_path}')
+
+def generate_dep(repo_name, lang):
+    enre_out_path = get_enre_out_file_path(repo_name, lang)
     if os.path.isfile(enre_out_path):
         print(f"ENRE out file {enre_out_path} existed. Skipping...")
         return False
     
-    if repo_type == "java":
-        generate_java_dep(repo_name)
-    elif repo_type == "python":
-        generate_python_dep(repo_name)
-    else:
-        raise NotImplementedError("generate_dep only supporting [java, python]")
+    general_generate_dep_for_lang(repo_name, lang)
     
     if not os.path.isfile(enre_out_path):
         print(f"ENRE cannot generated out file {enre_out_path}")
@@ -106,28 +113,28 @@ def generate_dep(repo_name, repo_type):
 
 # 转化路径格式，ENRE 的不同语言的输出有着不同的路径格式
 
-def convert_file_to_graph_file_path(file, repo_name, repo_type):
+def convert_file_to_graph_file_path(file, repo_name, lang):
     file = file.replace('\\', '/')
-    if repo_type == "java":
+    if lang == "java":
         return file
-    if repo_type == "python":
+    if lang == "python":
         return repo_name + '/' + file
     else:
         raise NotImplementedError()
 
 # 主方法
 
-def make_dataset(repo_url, repo_type):
-    repo_dir = clone_repo(repo_url, repo_type)
+def make_dataset(repo_url, lang):
+    repo_dir = clone_repo(repo_url, lang)
     
     repo_name = get_repo_name_from_url(repo_url)
-    if not generate_dep(repo_name, repo_type):     # if the out file is already analyzed or invalid
+    if not generate_dep(repo_name, lang):     # if the out file is already analyzed or invalid
         return
         
     dataset = []
 
     try:
-        codegraph = CodeGraph(get_enre_out_file_path(repo_name, repo_type))
+        codegraph = CodeGraph(get_enre_out_file_path(repo_name, lang))
     except Exception as e:
         print(e.with_traceback())
         print(f"Cannot build code graph for module {repo_name}. Skipping...")
@@ -143,7 +150,7 @@ def make_dataset(repo_url, repo_type):
             # print(f"Error reading {file}. Skipping...")
             continue
 
-        file_id = convert_file_to_graph_file_path(file, repo_name, repo_type)
+        file_id = convert_file_to_graph_file_path(file, repo_name, lang)
         if not codegraph.has_file(file_id):
             continue
         
@@ -213,7 +220,7 @@ def make_dataset(repo_url, repo_type):
     print('dataset length:', len(dataset))
     # 保存 dataset
     # train:valid:test = 7:1:2
-    dataset_dir = f"./dataset/{repo_type}/{repo_name}"
+    dataset_dir = f"./dataset/{lang}/{repo_name}"
     os.makedirs(dataset_dir, exist_ok=True)
     with open(os.path.join(dataset_dir, 'train.json'), 'w') as f:
         json.dump(dataset[:int(len(dataset)*0.7)], f)

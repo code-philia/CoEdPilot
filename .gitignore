@@ -1,4 +1,5 @@
 /dependency_analyzer/model/**
+/dependency_analyzer/model_backup/**
 /dependency_analyzer/enre_out/**
 /dependency_analyzer/dataset/**
 !README.md

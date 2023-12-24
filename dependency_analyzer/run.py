@@ -138,9 +138,9 @@ def main(model_name, lang, batch_size, train, test):
 
     # 加载数据
     if train:
-        training_set = load_data('./dataset/{lang}/train.json', tokenizer)
-        dev_set = load_data('./dataset/{lang}/valid.json', tokenizer)
-        test_set = load_data('./dataset/{lang}/test.json', tokenizer)
+        training_set = load_data(f'./dataset/{lang}/train.json', tokenizer)
+        dev_set = load_data(f'./dataset/{lang}/valid.json', tokenizer)
+        test_set = load_data(f'./dataset/{lang}/test.json', tokenizer)
 
         # 创建DataLoader
         train_dataloader = DataLoader(training_set, batch_size=batch_size, shuffle=True)
@@ -152,7 +152,7 @@ def main(model_name, lang, batch_size, train, test):
 
         preds = []
         step = 0
-        for epoch in range(start_epoch, 6):
+        for epoch in range(start_epoch, 10):
             epoch_iterator = tqdm(train_dataloader, desc="Training", position=0, leave=True)
             for batch in epoch_iterator:
                 step += 1
@@ -190,7 +190,7 @@ def main(model_name, lang, batch_size, train, test):
 
     if test:
         # 测试
-        test_set = load_data('./dataset/{lang}/test.json', tokenizer)
+        test_set = load_data(f'./dataset/{lang}/test.json', tokenizer)
         test_dataloader = DataLoader(test_set, batch_size=batch_size)
         test_loss = evaluate(model, test_dataloader, criterion, device, mode='test')
         print(f"Test Loss: {test_loss}")
