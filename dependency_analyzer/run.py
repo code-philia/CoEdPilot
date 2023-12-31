@@ -3,16 +3,16 @@ import os
 import torch
 import json
 import numpy as np
+import glob
 from io import open
-from itertools import cycle
 import torch.nn as nn
-from tqdm import tqdm, trange
+from tqdm import tqdm
 from torch.optim import AdamW
 from torch.utils.data import DataLoader, TensorDataset
-from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoTokenizer, RobertaForTokenClassification, RobertaConfig
 import torch.nn.functional as F
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
+import datetime
 
 class Model(nn.Module):
     def __init__(self, model_name):
@@ -102,14 +102,14 @@ def evaluate(model, dataloader, criterion, device, mode='dev'):
     prec = precision_score(gts[:,1], result[:,1])
     reca = recall_score(gts[:,1], result[:,1])
     f1 = f1_score(gts[:,1], result[:,1])
-    print(f"mode: {mode}, A depend by B\nacc: {acc}, precision: {prec}, recall: {reca}, F1: {f1}")
+    print(f"mode: {mode}, B depend by A\nacc: {acc}, precision: {prec}, recall: {reca}, F1: {f1}")
     
     if mode == 'dev':
         return total_loss / len(dataloader)
     else:
         return total_loss / len(dataloader)
 
-def main(model_name, lang, batch_size, train, test):
+def train_on_single_lang(model_name, lang, batch_size, train, test, checkpoint_path, epoch_num=10):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     # 初始化tokenizer和模型
@@ -126,7 +126,8 @@ def main(model_name, lang, batch_size, train, test):
     # 断点续训
     if os.path.exists(f'./model/{lang}') == False:
         os.makedirs(f'./model/{lang}')
-    checkpoint_path = f'./model/{lang}/model_checkpoint.bin'
+    if not checkpoint_path:
+        checkpoint_path = f'./model/{lang}/*.bin'   # globbing by default
     if os.path.exists(checkpoint_path):
         print('Loading checkpoint...')
         checkpoint = torch.load(checkpoint_path)
@@ -134,7 +135,12 @@ def main(model_name, lang, batch_size, train, test):
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epoch = checkpoint['epoch']
     else:
-        print('No checkpoint found. Training from scratch...')
+        bin_files = glob.glob(checkpoint_path)
+        if len(bin_files) > 0:
+            checkpoint_path = bin_files[0]
+            print(f'Using detected checkpoint file: {checkpoint_path}')
+        else:
+            print('No checkpoint found. Training from scratch...')
 
     # 加载数据
     if train:
@@ -152,7 +158,9 @@ def main(model_name, lang, batch_size, train, test):
 
         preds = []
         step = 0
-        for epoch in range(start_epoch, 10):
+        for epoch in range(start_epoch, epoch_num):
+            save_checkpoint_path = datetime.datetime.now().strftime(f'./model/{lang}/model_{lang}_%Y%m%d_%H%M%S_epoch{epoch}.bin')
+
             epoch_iterator = tqdm(train_dataloader, desc="Training", position=0, leave=True)
             for batch in epoch_iterator:
                 step += 1
@@ -170,23 +178,24 @@ def main(model_name, lang, batch_size, train, test):
                         'epoch': epoch + 1,
                         'model_state_dict': model.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict()
-                    }, checkpoint_path)
+                    }, save_checkpoint_path)
 
             # print(f"Epoch {epoch+1} completed.")
-
-            # 每2个epochs做一次验证
-            if (epoch + 1) % 2 == 0:
-                val_loss = evaluate(model, dev_dataloader, criterion, device)
-                print(f"Validation Loss: {val_loss}")
-                test_loss = evaluate(model, test_dataloader, criterion, device, mode='test')
-                print(f"Test Loss: {test_loss}")
 
             # 保存模型
             torch.save({
                 'epoch': epoch + 1,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict()
-            }, checkpoint_path)
+            }, save_checkpoint_path)
+            
+            # 每2个epochs做一次验证
+            if (epoch + 1) % 2 == 0:
+                val_loss = evaluate(model, dev_dataloader, criterion, device)
+                print(f"Validation Loss: {val_loss}")
+                # test_loss = evaluate(model, test_dataloader, criterion, device, mode='test')
+                # print(f"Test Loss: {test_loss}")
+
 
     if test:
         # 测试
@@ -195,11 +204,35 @@ def main(model_name, lang, batch_size, train, test):
         test_loss = evaluate(model, test_dataloader, criterion, device, mode='test')
         print(f"Test Loss: {test_loss}")
 
-if __name__ == "__main__":
+def run_test(model_checkpoint, lang, model_name, batch_size):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    tokenizer = AutoTokenizer.from_pretrained(model_name,model_max_length=512)
+    model = Model(model_name)
+    model.to(device)
+    criterion = nn.BCEWithLogitsLoss() #F1Loss()
+    
+    if os.path.exists(model_checkpoint):
+        print('Loading checkpoint...')
+        checkpoint = torch.load(model_checkpoint)
+        model.load_state_dict(checkpoint['model_state_dict'])
+    else:
+        print('No checkpoint found. Test aborted.')
+        return
+
+    test_set = load_data(f'./dataset/{lang}/test.json', tokenizer)
+    test_dataloader = DataLoader(test_set, batch_size=batch_size)
+    test_loss = evaluate(model, test_dataloader, criterion, device, mode='test')
+    print(f"Test Loss: {test_loss}")
+
+def main():
     model_name = 'huggingface/CodeBERTa-small-v1'
     batch_size = 32
     lang = 'python'
     train = False
     test = True
     print(f'--model: {model_name}, --lang: {lang}, --train: {train}, --test {test}, --batch_size: {batch_size}')
-    main(model_name, lang, batch_size, train, test)
+    train_on_single_lang(model_name, lang, batch_size, train, test)
+
+if __name__ == "__main__":
+    main()

@@ -139,7 +139,8 @@ def make_dataset(repo_url, lang):
         print(e.with_traceback())
         print(f"Cannot build code graph for module {repo_name}. Skipping...")
         return
-    
+    print("Finished building code graph")
+
     files = get_files(repo_dir) # 获取项目下所有文件路径
     for file in tqdm(files):    # File is relative path now
         # 逐个打开
