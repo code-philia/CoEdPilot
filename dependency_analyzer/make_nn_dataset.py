@@ -43,7 +43,7 @@ def main(report_path, lang):
             # 找到这些变量依赖的变量
             dep_variables = []
             for vairable in variables: # 逐个变量寻找依赖
-                dep_variables += codegraph.find_depend(vairable)
+                dep_variables += codegraph.find_dependencies(vairable)
             dep_variables = list(set(dep_variables))
             # print('dep variable:',dep_variables)
             # 从依赖变量中随机选取5%的变量
@@ -66,7 +66,7 @@ def main(report_path, lang):
                     # 得到这些变量依赖的变量 id
                     dep_variables_in_dep_window = []
                     for vairable in variables_in_dep_window:
-                        dep_variables_in_dep_window += codegraph.find_depend(vairable)
+                        dep_variables_in_dep_window += codegraph.find_dependencies(vairable)
                     # 如果依赖变量的依赖变量没有当前变量，则仅有依赖关系，而不是互相依赖
                     if set(dep_variables_in_dep_window).intersection(set(variables_in_dep_window)) == set():
                         if random.random() < 0.5:

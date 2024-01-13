@@ -92,6 +92,7 @@ def evaluate(model, dataloader, criterion, device, mode='dev'):
     preds = torch.cat(preds, dim=0)
 
     result = np.where(np.array(preds) >= 0.5, 1, 0)
+    
     acc = accuracy_score(gts[:,0], result[:,0])
     prec = precision_score(gts[:,0], result[:,0])
     reca = recall_score(gts[:,0], result[:,0])
@@ -132,7 +133,7 @@ def train_on_single_lang(model_name, lang, batch_size, train, test, checkpoint_p
         print('Loading checkpoint...')
         checkpoint = torch.load(checkpoint_path)
         model.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epoch = checkpoint['epoch']
     else:
         bin_files = glob.glob(checkpoint_path)
@@ -176,8 +177,8 @@ def train_on_single_lang(model_name, lang, batch_size, train, test, checkpoint_p
                 if step % 1000 == 0:
                     torch.save({
                         'epoch': epoch + 1,
-                        'model_state_dict': model.state_dict(),
-                        'optimizer_state_dict': optimizer.state_dict()
+                        'model_state_dict': model.state_dict()
+                        # 'optimizer_state_dict': optimizer.state_dict()
                     }, save_checkpoint_path)
 
             # print(f"Epoch {epoch+1} completed.")
@@ -185,8 +186,8 @@ def train_on_single_lang(model_name, lang, batch_size, train, test, checkpoint_p
             # 保存模型
             torch.save({
                 'epoch': epoch + 1,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict()
+                'model_state_dict': model.state_dict()
+                # 'optimizer_state_dict': optimizer.state_dict()
             }, save_checkpoint_path)
             
             # 每2个epochs做一次验证
@@ -232,7 +233,7 @@ def main():
     train = False
     test = True
     print(f'--model: {model_name}, --lang: {lang}, --train: {train}, --test {test}, --batch_size: {batch_size}')
-    train_on_single_lang(model_name, lang, batch_size, train, test)
+    train_on_single_lang(model_name, lang, batch_size, train, test, None)
 
 if __name__ == "__main__":
     main()
