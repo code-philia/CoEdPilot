@@ -94,9 +94,9 @@ def main(lang: str, recalculate_dep_score: bool, test_only: bool, debug_mode: bo
     test_embedding_similiarity = evaluate_embedding_model(embedding_model, test_dataloader, "test")
 
     # Step 5: Use linear regression to fit val dataset, and evaluate on test dataset
-    X_train = [val_dataset[idx]["dependency_score"][0] + [val_embedding_similiarity[idx]] for idx in range(len(val_embedding_similiarity))]
+    X_train = [val_dataset[idx]["dependency_score"][:1] + [val_embedding_similiarity[idx]] for idx in range(len(val_embedding_similiarity))]
     y_train = [val_dataset[idx]["label"] for idx in range(len(val_embedding_similiarity))]
-    X_test = [test_dataset[idx]["dependency_score"][0] + [test_embedding_similiarity[idx]] for idx in range(len(test_embedding_similiarity))]
+    X_test = [test_dataset[idx]["dependency_score"][:1] + [test_embedding_similiarity[idx]] for idx in range(len(test_embedding_similiarity))]
     y_test = [test_dataset[idx]["label"] for idx in range(len(test_embedding_similiarity))]
 
     reg = LinearRegression().fit(X_train, y_train)
