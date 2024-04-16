@@ -65,11 +65,11 @@ def main(lang: str, recalculate_dep_score: bool, test_only: bool, debug_mode: bo
                 writer.write_all(dataset)
     
     # Step 2: load datasets
-    with open(f"./dataset/{lang}/train.jsonl") as f:
+    with open(f"./dataset/{lang}/train.jsonl", encoding="utf-8") as f:
         train_dataset = [json.loads(line) for line in f.readlines()]
-    with open(f"./dataset/{lang}/dev.jsonl") as f:
+    with open(f"./dataset/{lang}/dev.jsonl", encoding="utf-8") as f:
         val_dataset = [json.loads(line) for line in f.readlines()]
-    with open(f"./dataset/{lang}/test.jsonl") as f:
+    with open(f"./dataset/{lang}/test.jsonl", encoding="utf-8") as f:
         test_dataset = [json.loads(line) for line in f.readlines()]
 
     # Step 3: Train a siamese network to learn embeddings
@@ -105,6 +105,8 @@ def main(lang: str, recalculate_dep_score: bool, test_only: bool, debug_mode: bo
     y_pred = reg.predict(X_test)
     
     # save y_pred and y_test for further analysis
+    if not os.path.exists("./result"):
+        os.makedirs("./result")
     with open(f"result/{lang}_val.json", "w") as f:
         json.dump({"X_val": np.array(X_train).tolist(), "y_val": y_train}, f, indent=4)
     with open(f"result/{lang}_test.json", "w") as f:

@@ -8,3 +8,4 @@ tqdm
 bleu
 pandas
 waitress
+jsonlines
