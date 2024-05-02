@@ -5,8 +5,13 @@
 This repository contains the source code and supporting materials for the paper "*CoEdPilot: Recommending Code Edits with Learned Prior Edit Relevance, Project-wise Awareness, and Interactive Nature*" by Chenyan Liu, Yufan Cai, Yun Lin, Yuhuan Huang, Yunrui Pei, Bo Jiang, Ping Yang, Jin Song Dong, and Hong Mei. Presented at ISSTA'24. 
 
 ## Demo
-Please check out our demo video on YouTube:
-[![CoEdPilot Demo](http://img.youtube.com/vi/6G2-7Gf0Fhc/sddefault.jpg)](https://www.youtube.com/embed/6G2-7Gf0Fhc?si=A4XcAEL6OFxO-6iL)
+> [!NOTE]
+> Please click the image to watch the demo video on YouTube.
+<div align="center">
+   <a href="https://youtu.be/6G2-7Gf0Fhc">
+   <img src="./demo_cover.png" width="600" />
+   </a>
+</div>
 
 ## Contents
 > More detailed READMEs are available in each subdirectory.
