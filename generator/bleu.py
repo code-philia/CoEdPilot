@@ -76,7 +76,7 @@ def cook_refs(refs, n=4):
     and returns an object that encapsulates everything that BLEU
     needs to know about them.'''
     
-    refs = [normalize(ref) for ref in refs]
+    refs = [normalize(ref) for ref in refs] #
     maxcounts = {}
     for ref in refs:
         counts = count_ngrams(ref, n)
