@@ -43,6 +43,7 @@ normalize2 = [
 ]
 normalize2 = [(re.compile(pattern), replace) for (pattern, replace) in normalize2]
 
+
 def normalize(s):
     '''Normalize and tokenize text. This is lifted from NIST mteval-v11a.pl.'''
     # Added to bypass NIST-style pre-processing of hyp and ref files -- wade
@@ -62,6 +63,7 @@ def normalize(s):
         s = re.sub(pattern, replace, s)
     return s.split()
 
+
 def count_ngrams(words, n=4):
     counts = {}
     for k in range(1,n+1):
@@ -69,6 +71,7 @@ def count_ngrams(words, n=4):
             ngram = tuple(words[i:i+k])
             counts[ngram] = counts.get(ngram, 0)+1
     return counts
+
 
 def cook_refs(refs, n=4):
     '''Takes a list of reference sentences for a single segment
@@ -82,6 +85,7 @@ def cook_refs(refs, n=4):
         for (ngram,count) in counts.items():
             maxcounts[ngram] = max(maxcounts.get(ngram,0), count)
     return ([len(ref) for ref in refs], maxcounts)
+
 
 def cook_test(test, item, n=4):
     '''Takes a test sentence and returns an object that
@@ -112,6 +116,7 @@ def cook_test(test, item, n=4):
         result["correct"][len(ngram)-1] += min(refmaxcounts.get(ngram,0), count)
 
     return result
+
 
 def score_cooked(allcomps, n=4, ground=0, smooth=1):
     totalcomps = {'testlen':0, 'reflen':0, 'guess':[0]*n, 'correct':[0]*n}
@@ -145,13 +150,16 @@ def score_cooked(allcomps, n=4, ground=0, smooth=1):
       all_bleus[i] = math.exp(all_bleus[i])
     return all_bleus
 
+
 def bleu(refs,  candidate, ground=0, smooth=1):
     refs = cook_refs(refs)
     test = cook_test(candidate, refs)
     return score_cooked([test], ground=ground, smooth=smooth)
 
+
 def splitPuncts(line):
   return ' '.join(re.findall(r"[\w]+|[^\s\w]", line))
+
 
 def computeMaps(predictions, goldfile):
   predictionMap = {}
