@@ -62,22 +62,21 @@ def list_files_in_directory(git_repo_path: str, sha: str, user_name: str) -> lis
         return None
     return file_list
 
-
-def main(lang: str, recalculate_dep_score: bool, test_only: bool, debug_mode: bool) -> None:
-    """
-    main function to process the dataset and train the model.
-    """
+def main(lang: str, recalculate_dep_score: bool, test_only: bool, debug_mode: bool,
+         dataset_root:str='./dataset', model_root:str='./model', result_root:str='./result',
+         device:torch.device=torch.device('cuda', index=0)) -> None:
     # Step 1: make dataset
-    if not os.path.exists(f"./dataset/{lang}"):
-        os.makedirs(f"./dataset/{lang}")
+    dataset_dir = os.path.join(dataset_root, lang)
+    os.makedirs(dataset_dir, exist_ok=True)
     for mode in ["train", "dev", "test"]:
-        print(f"Load dataset from ./dataset/{lang}/{mode}.jsonl")
-        with jsonlines.open(f"./dataset/{lang}/{mode}.jsonl") as reader:
+        jsonl_path = os.path.join(dataset_dir, f"{mode}.jsonl")
+        print(f"Load dataset from {jsonl_path}")
+        with jsonlines.open(jsonl_path, 'r') as reader:
             dataset = [obj for obj in reader]
     
         # Step 1: go through dependency analyzer first
         if "dependency_score" not in dataset[0].keys() or recalculate_dep_score:
-            dependency_analyzer = DependencyClassifier()
+            dependency_analyzer = DependencyClassifier(device=device)
             
             for sample in tqdm(dataset, desc = "Calculating dependency score"):
                 hunk = sample["hunk"]
@@ -85,15 +84,15 @@ def main(lang: str, recalculate_dep_score: bool, test_only: bool, debug_mode: bo
                 dep_score_list = cal_dep_score(hunk, file_content, dependency_analyzer)
                 sample["dependency_score"] = dep_score_list
             
-            with jsonlines.open(f"./dataset/{lang}/{mode}.jsonl", mode = "w") as writer:
+            with jsonlines.open(jsonl_path, mode="w") as writer:
                 writer.write_all(dataset)
     
     # Step 2: load datasets
-    with open(f"./dataset/{lang}/train.jsonl", encoding = "utf-8") as f:
+    with open(os.path.join(dataset_dir, "train.jsonl"), encoding="utf-8") as f:
         train_dataset = [json.loads(line) for line in f.readlines()]
-    with open(f"./dataset/{lang}/dev.jsonl", encoding = "utf-8") as f:
+    with open(os.path.join(dataset_dir, "dev.jsonl"), encoding="utf-8") as f:
         val_dataset = [json.loads(line) for line in f.readlines()]
-    with open(f"./dataset/{lang}/test.jsonl", encoding = "utf-8") as f:
+    with open(os.path.join(dataset_dir, "test.jsonl"), encoding="utf-8") as f:
         test_dataset = [json.loads(line) for line in f.readlines()]
 
     # Step 3: Train a siamese network to learn embeddings
@@ -107,7 +106,10 @@ def main(lang: str, recalculate_dep_score: bool, test_only: bool, debug_mode: bo
         epoch = 1 if debug_mode else 4
         train_embedding_model(embedding_model, train_dataloader, val_dataloader, 1e-5, epoch, lang)
     else:
-        embedding_model.load_state_dict(torch.load(f"./model/{lang}/embedding_model.bin", map_location = torch.device('cuda')))
+        model_path = os.path.join(model_root, lang, 'embedding_model.bin')
+        if not os.path.isfile(model_path):
+            raise FileNotFoundError(f'{model_path} not found')
+        embedding_model.load_state_dict(torch.load(model_path, map_location=device))
 
     # Step 4: Calculate the semantic similarity between the edit and the file for val & test dataset
     tensor_val_dataset = load_siamese_data(val_dataset, tokenizer, debug_mode)
@@ -129,11 +131,10 @@ def main(lang: str, recalculate_dep_score: bool, test_only: bool, debug_mode: bo
     y_pred = reg.predict(X_test)
     
     # save y_pred and y_test for further analysis
-    if not os.path.exists("./result"):
-        os.makedirs("./result")
-    with open(f"result/{lang}_val.json", "w") as f:
+    os.makedirs(result_root, exist_ok=True)
+    with open(os.path.join(result_root, f"{lang}_val.json"), "w") as f:
         json.dump({"X_val": np.array(X_train).tolist(), "y_val": y_train}, f, indent=4)
-    with open(f"result/{lang}_test.json", "w") as f:
+    with open(os.path.join(result_root, f"{lang}_test.json"), "w") as f:
         json.dump({"X_test": np.array(X_test).tolist(), "y_test": y_test}, f, indent=4)
     threshold = {
         "java": 0.4,
@@ -161,4 +162,10 @@ if __name__ == "__main__":
     recalculate_dep_score = False # if true, calculate dependency score again
     test_only = True # if true, only test
     debug_mode = False
-    main(lang, recalculate_dep_score, test_only, debug_mode)
+    dataset_root: str = './dataset'
+    model_root:str = './model'
+    result_root:str = './result'
+    device = torch.device('cuda', index=0)
+    main(lang, recalculate_dep_score, test_only, debug_mode,
+         dataset_root=dataset_root, model_root=model_root, result_root=result_root,
+         device=device)
