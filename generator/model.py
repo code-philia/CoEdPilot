@@ -1,11 +1,15 @@
 # Copyright (c) Microsoft Corporation. 
 # Licensed under the MIT license.
 
+import copy
+
 import torch
 import torch.nn as nn
 import torch
 from torch.autograd import Variable
-import copy
+
+
+
 class Seq2Seq(nn.Module):
     """
         Build Seqence-to-Sequence.
@@ -23,18 +27,18 @@ class Seq2Seq(nn.Module):
     def __init__(self, encoder,decoder,config,beam_size=None,max_length=None,sos_id=None,eos_id=None):
         super(Seq2Seq, self).__init__()
         self.encoder = encoder
-        self.decoder=decoder
-        self.config=config
+        self.decoder = decoder
+        self.config = config
         self.register_buffer("bias", torch.tril(torch.ones(2048, 2048)))
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
         self.lsm = nn.LogSoftmax(dim=-1)
         self.tie_weights()
         
-        self.beam_size=beam_size
-        self.max_length=max_length
-        self.sos_id=sos_id
-        self.eos_id=eos_id
+        self.beam_size = beam_size
+        self.max_length = max_length
+        self.sos_id = sos_id
+        self.eos_id = eos_id
         
     def _tie_or_clone_weights(self, first_module, second_module):
         """ Tie or clone module weights depending of weither we are using TorchScript or not
@@ -72,7 +76,7 @@ class Seq2Seq(nn.Module):
             outputs = loss,loss*active_loss.sum(),active_loss.sum()
             return outputs
         else:
-            #Predict 
+            # Predict 
             self.beam_size=args.beam_size
             preds=[]       
             zero=torch.cuda.LongTensor(1).fill_(0)     
@@ -104,7 +108,6 @@ class Seq2Seq(nn.Module):
             return preds   
         
         
-
 class Beam(object):
     def __init__(self, size,sos,eos):
         self.size = size

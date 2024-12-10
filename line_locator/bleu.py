@@ -129,25 +129,25 @@ def score_cooked(allcomps, n=4, ground=0, smooth=1):
     logbleu = 0.0
     all_bleus = []
     for k in range(n):
-      correct = totalcomps['correct'][k]
-      guess = totalcomps['guess'][k]
-      addsmooth = 0
-      if smooth == 1 and k > 0:
-        addsmooth = 1
-      logbleu += math.log(correct + addsmooth + sys.float_info.min)-math.log(guess + addsmooth+ sys.float_info.min)
-      if guess == 0:
-        all_bleus.append(-10000000)
-      else:
-        all_bleus.append(math.log(correct + sys.float_info.min)-math.log( guess ))
+        correct = totalcomps['correct'][k]
+        guess = totalcomps['guess'][k]
+        addsmooth = 0
+        if smooth == 1 and k > 0:
+            addsmooth = 1
+        logbleu += math.log(correct + addsmooth + sys.float_info.min)-math.log(guess + addsmooth+ sys.float_info.min)
+        if guess == 0:
+            all_bleus.append(-10000000)
+        else:
+            all_bleus.append(math.log(correct + sys.float_info.min)-math.log( guess ))
 
     logbleu /= float(n)
     all_bleus.insert(0, logbleu)
 
     brevPenalty = min(0,1-float(totalcomps['reflen'] + 1)/(totalcomps['testlen'] + 1))
     for i in range(len(all_bleus)):
-      if i ==0:
-        all_bleus[i] += brevPenalty
-      all_bleus[i] = math.exp(all_bleus[i])
+        if i ==0:
+           all_bleus[i] += brevPenalty
+        all_bleus[i] = math.exp(all_bleus[i])
     return all_bleus
 
 
@@ -158,51 +158,51 @@ def bleu(refs,  candidate, ground=0, smooth=1):
 
 
 def splitPuncts(line):
-  return ' '.join(re.findall(r"[\w]+|[^\s\w]", line))
+    return ' '.join(re.findall(r"[\w]+|[^\s\w]", line))
 
 
 def computeMaps(predictions, goldfile):
-  predictionMap = {}
-  goldMap = {}
+    predictionMap = {}
+    goldMap = {}
   
-  for row in predictions:
-    cols = row.strip().split('\t')
-    if len(cols) == 1:
-      (rid, pred) = (cols[0], '') 
-    else:
-      (rid, pred) = (cols[0], cols[1]) 
-    predictionMap[rid] = [splitPuncts(pred.strip().lower())]
+    for row in predictions:
+        cols = row.strip().split('\t')
+        if len(cols) == 1:
+            (rid, pred) = (cols[0], '') 
+        else:
+            (rid, pred) = (cols[0], cols[1]) 
+        predictionMap[rid] = [splitPuncts(pred.strip().lower())]
 
-  with open(goldfile, 'r') as f:
-    for row in f:
-      (rid, pred) = row.split('\t') 
-      if rid in predictionMap: # Only insert if the id exists for the method
-        if rid not in goldMap:
-          goldMap[rid] = []
-        goldMap[rid].append(splitPuncts(pred.strip().lower()))
+    with open(goldfile, 'r') as f:
+        for row in f:
+            (rid, pred) = row.split('\t') 
+            if rid in predictionMap: # Only insert if the id exists for the method
+                if rid not in goldMap:
+                    goldMap[rid] = []
+                goldMap[rid].append(splitPuncts(pred.strip().lower()))
 
   # sys.stderr.write('Total: ' + str(len(goldMap)) + '\n')
-  return (goldMap, predictionMap)
+    return (goldMap, predictionMap)
 
 
-#m1 is the reference map
-#m2 is the prediction map
+# m1 is the reference map
+# m2 is the prediction map
 def bleuFromMaps(m1, m2):
-  score = [0] * 5
-  num = 0.0
+    score = [0] * 5
+    num = 0.0
 
-  for key in m1:
-    if key in m2:
-      bl = bleu(m1[key], m2[key][0])
-      score = [ score[i] + bl[i] for i in range(0, len(bl))]
-      num += 1
-  return [s * 100.0 / num for s in score]
+    for key in m1:
+        if key in m2:
+            bl = bleu(m1[key], m2[key][0])
+            score = [ score[i] + bl[i] for i in range(0, len(bl))]
+            num += 1
+    return [s * 100.0 / num for s in score]
 
 if __name__ == '__main__':
-  reference_file = sys.argv[1]
-  predictions = []
-  for row in sys.stdin:
-    predictions.append(row)
-  (goldMap, predictionMap) = computeMaps(predictions, reference_file) 
-  print (bleuFromMaps(goldMap, predictionMap)[0])
+    reference_file = sys.argv[1]
+    predictions = []
+    for row in sys.stdin:
+        predictions.append(row)
+    (goldMap, predictionMap) = computeMaps(predictions, reference_file) 
+    print (bleuFromMaps(goldMap, predictionMap)[0])
 

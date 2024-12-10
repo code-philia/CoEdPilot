@@ -2,26 +2,29 @@
 from __future__ import absolute_import
 import os
 import sys
-import bleu
-import pickle
-import torch
 import json
 import random
 import logging
 import argparse
-import numpy as np
 from io import open
 from itertools import cycle
+import pickle
+
+import numpy as np
+import torch
 import torch.nn as nn
-from model import Seq2Seq
-from tqdm import tqdm, trange
 from torch.utils.data import DataLoader, Dataset, SequentialSampler, RandomSampler,TensorDataset
 from torch.utils.data.distributed import DistributedSampler
 from transformers import (WEIGHTS_NAME, AdamW, get_linear_schedule_with_warmup,
                           RobertaConfig, RobertaModel, RobertaTokenizer)
+from tqdm import tqdm, trange
+
+from model import Seq2Seq
+import bleu
+
 MODEL_CLASSES = {'roberta': (RobertaConfig, RobertaModel, RobertaTokenizer)}
 
-logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
+logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s - %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
                     level = logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,19 +42,20 @@ class Example(object):
         self.target = target
         self.edit_ops = edit_ops
 
+
 def read_examples(filename):
     """Read examples from filename."""
-    examples=[]
+    examples = []
     with open(filename,encoding="utf-8") as f:
         for idx, line in enumerate(f):
-            line=line.strip()
-            js=json.loads(line)
+            line = line.strip()
+            js = json.loads(line)
             if 'idx' not in js:
-                js['idx']=idx
+                js['idx'] = idx
                 
-            code=js['code_tokens'] # do not remove \n and \t in code
-            nl=js['docstring_tokens']
-            label_window=js['label_window']
+            code = js['code_tokens'] # do not remove \n and \t in code
+            nl = js['docstring_tokens']
+            label_window = js['label_window']
 
             # count the number of mask token in code
             num_mask = code.count('<mask>')
@@ -60,12 +64,13 @@ def read_examples(filename):
             examples.append(
                 Example(
                         idx = idx,
-                        source=code,
+                        source = code,
                         target = nl,
                         edit_ops = label_window
                         ) 
             )
     return examples
+
 
 class InputFeatures(object):
     """A single training/test features for a example."""
@@ -83,6 +88,7 @@ class InputFeatures(object):
         self.source_mask = source_mask
         self.target_mask = target_mask       
         
+
 def convert_examples_to_features(examples, tokenizer, args, stage=None):
     features = []
     for example_index, example in enumerate(tqdm(examples, desc='convert examples to features')):
@@ -100,27 +106,27 @@ def convert_examples_to_features(examples, tokenizer, args, stage=None):
                 edit_op_idx += 1
     
         # the reset is the same as original code
-        source_tokens =[tokenizer.cls_token]+source_tokens+[tokenizer.sep_token]
-        source_ids =  tokenizer.convert_tokens_to_ids(source_tokens) 
+        source_tokens = [tokenizer.cls_token] + source_tokens + [tokenizer.sep_token]
+        source_ids = tokenizer.convert_tokens_to_ids(source_tokens) 
         source_mask = [1] * (len(source_tokens))
         padding_length = args.max_source_length - len(source_ids)
-        source_ids+=[tokenizer.pad_token_id]*padding_length
-        source_mask+=[0]*padding_length
+        source_ids += [tokenizer.pad_token_id] * padding_length
+        source_mask += [0] * padding_length
  
         #target
-        if stage=="test":
+        if stage == "test":
             target_tokens = tokenizer.tokenize("None")
         else:
             target_tokens = tokenizer.tokenize(example.target)[:args.max_target_length-2]
-        target_tokens = [tokenizer.cls_token]+target_tokens+[tokenizer.sep_token]            
+        target_tokens = [tokenizer.cls_token] + target_tokens + [tokenizer.sep_token]            
         target_ids = tokenizer.convert_tokens_to_ids(target_tokens)
-        target_mask = [1] *len(target_ids)
+        target_mask = [1] * len(target_ids)
         padding_length = args.max_target_length - len(target_ids)
-        target_ids+=[tokenizer.pad_token_id]*padding_length
-        target_mask+=[0]*padding_length   
+        target_ids += [tokenizer.pad_token_id] * padding_length
+        target_mask += [0] * padding_length   
    
         if example_index < 1:
-            if stage=='train':
+            if stage == 'train':
                 logger.info("*** Example ***")
                 logger.info("idx: {}".format(example.idx))
 
@@ -143,13 +149,15 @@ def convert_examples_to_features(examples, tokenizer, args, stage=None):
         )
     return features
 
-def set_seed(seed=42):
+
+def set_seed(seed = 42):
     random.seed(seed)
     os.environ['PYHTONHASHSEED'] = str(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -395,7 +403,7 @@ def main():
                 if eval_loss<best_loss:
                     logger.info("  Best ppl:%s",round(np.exp(eval_loss),5))
                     logger.info("  "+"*"*20)
-                    best_loss=eval_loss
+                    best_loss = eval_loss
                     # Save best checkpoint for best ppl
                     output_dir = os.path.join(args.output_dir, 'checkpoint-best-ppl')
                     if not os.path.exists(output_dir):
@@ -407,7 +415,7 @@ def main():
 
                 #Calculate bleu  
                 if 'dev_bleu' in dev_dataset:
-                    eval_examples,eval_data=dev_dataset['dev_bleu']
+                    eval_examples,eval_data = dev_dataset['dev_bleu']
                 else:
                     eval_examples = read_examples(args.dev_filename)
                     eval_examples = random.sample(eval_examples,min(1000,len(eval_examples)))
@@ -415,7 +423,7 @@ def main():
                     all_source_ids = torch.tensor([f.source_ids for f in eval_features], dtype=torch.long)
                     all_source_mask = torch.tensor([f.source_mask for f in eval_features], dtype=torch.long)    
                     eval_data = TensorDataset(all_source_ids,all_source_mask)   
-                    dev_dataset['dev_bleu']=eval_examples,eval_data
+                    dev_dataset['dev_bleu'] = eval_examples,eval_data
 
 
 
@@ -426,14 +434,14 @@ def main():
                 p=[]
                 for batch in eval_dataloader:
                     batch = tuple(t.to(device) for t in batch)
-                    source_ids,source_mask= batch                  
+                    source_ids,source_mask = batch                  
                     with torch.no_grad():
                         preds = model(source_ids=source_ids,source_mask=source_mask, args=args)  
                         for pred in preds:
-                            t=pred[0].cpu().numpy()
-                            t=list(t)
+                            t = pred[0].cpu().numpy()
+                            t = list(t)
                             if 0 in t:
-                                t=t[:t.index(0)]
+                                t = t[:t.index(0)]
                             text = tokenizer.decode(t,clean_up_tokenization_spaces=False)
                             p.append(text)
                     break 
@@ -448,11 +456,11 @@ def main():
                 (goldMap, predictionMap) = bleu.computeMaps(predictions, os.path.join(args.output_dir, "dev.gold")) 
                 dev_bleu=round(bleu.bleuFromMaps(goldMap, predictionMap)[0],2)
                 logger.info("  %s = %s "%("bleu-4",str(dev_bleu)))
-                logger.info("  "+"*"*20)    
+                logger.info("  " + "*"*20)    
                 if dev_bleu>best_bleu:
                     logger.info("  Best bleu:%s",dev_bleu)
                     logger.info("  "+"*"*20)
-                    best_bleu=dev_bleu
+                    best_bleu = dev_bleu
                     # Save best checkpoint for best bleu
                     output_dir = os.path.join(args.output_dir, 'checkpoint-best-bleu')
                     if not os.path.exists(output_dir):
@@ -492,7 +500,7 @@ def main():
                             t=candidate.cpu().numpy()
                             t=list(t)
                             if 0 in t:
-                                t=t[:t.index(0)]
+                                t = t[:t.index(0)]
                             text = tokenizer.decode(t,clean_up_tokenization_spaces=False)
                             multiple_results.append(text)
                         p.append(multiple_results.copy())
