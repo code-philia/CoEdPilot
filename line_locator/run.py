@@ -1,24 +1,35 @@
 # coding=utf-8
 from __future__ import absolute_import
-import os
-import sys
-import bleu
-import pickle
-import torch
-import json
-import random
-import logging
+
 import argparse
+import json
+import logging
 import numpy as np
+import os
+import pickle
+import random
+import sys
+
+import torch
+import torch.nn as nn
 from io import open
 from itertools import cycle
-import torch.nn as nn
+
 from model import Seq2Seq
-from tqdm import tqdm, trange
-from torch.utils.data import DataLoader, Dataset, SequentialSampler, RandomSampler, TensorDataset
+from torch.utils.data import DataLoader, Dataset, RandomSampler, SequentialSampler, TensorDataset
 from torch.utils.data.distributed import DistributedSampler
-from transformers import (WEIGHTS_NAME, AdamW, get_linear_schedule_with_warmup,
-                         RobertaConfig, RobertaModel, RobertaTokenizer)
+from tqdm import trange, tqdm
+
+from transformers import (
+    AdamW,
+    get_linear_schedule_with_warmup,
+    RobertaConfig,
+    RobertaModel,
+    RobertaTokenizer,
+    WEIGHTS_NAME,
+)
+
+import bleu
 
 MODEL_CLASSES = {'roberta': (RobertaConfig, RobertaModel, RobertaTokenizer)}
 
@@ -33,6 +44,7 @@ class Example(object):
         self.idx = idx
         self.source = source
         self.target = target
+
 
 def read_examples(filename):
     """Read examples from filename."""
@@ -57,6 +69,7 @@ def read_examples(filename):
             )
     return examples
 
+
 class InputFeatures(object):
     """A single training/test features for a example."""
     def __init__(self, example_id, source_ids, target_ids, source_mask, target_mask):
@@ -65,6 +78,7 @@ class InputFeatures(object):
         self.target_ids = target_ids
         self.source_mask = source_mask
         self.target_mask = target_mask
+
 
 def convert_examples_to_features(examples, tokenizer, args, stage=None):
     features = []
@@ -127,6 +141,7 @@ def convert_examples_to_features(examples, tokenizer, args, stage=None):
         )
     return features
 
+
 def set_seed(seed=42):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -134,7 +149,8 @@ def set_seed(seed=42):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
-        
+
+
 def main():
     parser = argparse.ArgumentParser()
 
@@ -484,6 +500,6 @@ def main():
             logger.info("  %s = %s " % ("bleu-4", str(dev_bleu)))
             logger.info("  " + "*" * 20)
 
-      
+
 if __name__ == "__main__":
     main()
