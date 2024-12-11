@@ -33,9 +33,10 @@ class DependencyAnalyzer(nn.Module, PyTorchModelHubMixin):
         pooler_output = outputs.pooler_output
         output_2d = self.dense(pooler_output)
         return output_2d
-
-
-def load_model_and_tokenizer(model_dir, directly_load = True, model_with_structure_dir = None):
+    
+def load_model_and_tokenizer(model_dir: str,
+                             directly_load:bool = True,
+                             model_with_structure_dir:str|None = None)->tuple[DependencyAnalyzer, RobertaTokenizerFast]:
     if directly_load:
         tokenizer = RobertaTokenizerFast.from_pretrained(model_dir)
         if model_with_structure_dir:
@@ -65,12 +66,15 @@ def load_model_and_tokenizer(model_dir, directly_load = True, model_with_structu
 
 
 class DependencyClassifier:
-    def __init__(self, load_dir = "../dependency_analyzer/model", load_with_model_struture = False):
-        self.model, self.tokenizer = load_model_and_tokenizer(load_dir, model_with_structure_dir = load_dir) \
+    def __init__(self,
+                 load_dir:str="../dependency_analyzer/model",
+                 load_with_model_struture:bool=False,
+                 device:torch.device=torch.device("cuda", index=0)):
+        self.model, self.tokenizer = load_model_and_tokenizer(load_dir, model_with_structure_dir=load_dir) \
             if load_with_model_struture \
             else load_model_and_tokenizer(load_dir)
-        if torch.cuda.is_available():
-            self.model.to(torch.device('cuda'))
+        self.device = device
+        self.model.to(self.device)
 
     def construct_pair(self, code_1: str, code_2: str):
         return '<from>' + code_1 + '<to>' + code_2 
@@ -82,7 +86,7 @@ class DependencyClassifier:
         sigmoid = nn.Sigmoid()
         token_input = self.tokenizer(text, return_tensors = 'pt') # ATTENTION: converted to batch here
         if torch.cuda.is_available():
-            token_input = token_input.to(torch.device('cuda'))
+            token_input = token_input.to(self.device)
 
         with torch.no_grad():
             outputs = self.model(               
@@ -94,17 +98,16 @@ class DependencyClassifier:
     
     def batch_gen(self, corpus_pair: list[str]):
         sigmoid = nn.Sigmoid()
-        device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-        token_input = self.tokenizer(corpus_pair, return_tensors = 'pt', padding = True, truncation = True, max_length = 512)
+        token_input = self.tokenizer(corpus_pair, return_tensors='pt', padding=True, truncation=True, max_length=512)
         dataset = TensorDataset(token_input["input_ids"], token_input["attention_mask"])
         dataloader = DataLoader(dataset, batch_size = 32, shuffle = False)
         
         preds = []
         with torch.no_grad():
             for batch in dataloader:
-                batch_input, attention_mask = [item.to(device) for item in batch]
-                outputs = self.model(input_ids = batch_input, attention_mask = attention_mask)
-                outputs = sigmoid(outputs)[:, 1]
+                batch_input, attention_mask = [item.to(self.device) for item in batch]
+                outputs = self.model(input_ids=batch_input, attention_mask=attention_mask)
+                outputs = sigmoid(outputs)[:,1]
                 preds.append(outputs.detach().cpu())
         preds = torch.cat(preds, dim = 0)
         return preds.numpy()
