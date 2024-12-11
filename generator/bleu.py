@@ -44,6 +44,7 @@ normalize2 = [
 ]
 normalize2 = [(re.compile(pattern), replace) for (pattern, replace) in normalize2]
 
+
 def normalize(s):
     '''Normalize and tokenize text. This is lifted from NIST mteval-v11a.pl.'''
     # Added to bypass NIST-style pre-processing of hyp and ref files -- wade
@@ -63,6 +64,7 @@ def normalize(s):
         s = re.sub(pattern, replace, s)
     return s.split()
 
+
 def count_ngrams(words, n=4):
     counts = {}
     for k in range(1,n+1):
@@ -71,18 +73,20 @@ def count_ngrams(words, n=4):
             counts[ngram] = counts.get(ngram, 0)+1
     return counts
 
+
 def cook_refs(refs, n=4):
     '''Takes a list of reference sentences for a single segment
     and returns an object that encapsulates everything that BLEU
     needs to know about them.'''
     
-    refs = [normalize(ref) for ref in refs] #
+    refs = [normalize(ref) for ref in refs]
     maxcounts = {}
     for ref in refs:
         counts = count_ngrams(ref, n)
         for (ngram,count) in counts.items():
             maxcounts[ngram] = max(maxcounts.get(ngram,0), count)
     return ([len(ref) for ref in refs], maxcounts)
+
 
 def cook_test(test, item, n=4):
     '''Takes a test sentence and returns an object that
@@ -114,6 +118,7 @@ def cook_test(test, item, n=4):
 
     return result
 
+
 def score_cooked(allcomps, n=4, ground=0, smooth=1):
     totalcomps = {'testlen':0, 'reflen':0, 'guess':[0]*n, 'correct':[0]*n}
     for comps in allcomps:
@@ -125,149 +130,156 @@ def score_cooked(allcomps, n=4, ground=0, smooth=1):
     logbleu = 0.0
     all_bleus = []
     for k in range(n):
-      correct = totalcomps['correct'][k]
-      guess = totalcomps['guess'][k]
-      addsmooth = 0
-      if smooth == 1 and k > 0:
-        addsmooth = 1
-      logbleu += math.log(correct + addsmooth + sys.float_info.min)-math.log(guess + addsmooth+ sys.float_info.min)
-      if guess == 0:
-        all_bleus.append(-10000000)
-      else:
-        all_bleus.append(math.log(correct + sys.float_info.min)-math.log( guess ))
+        correct = totalcomps['correct'][k]
+        guess = totalcomps['guess'][k]
+        addsmooth = 0
+        if smooth == 1 and k > 0:
+            addsmooth = 1
+        logbleu += math.log(correct + addsmooth + sys.float_info.min)-math.log(guess + addsmooth+ sys.float_info.min)
+        if guess == 0:
+            all_bleus.append(-10000000)
+        else:
+            all_bleus.append(math.log(correct + sys.float_info.min)-math.log( guess ))
 
     logbleu /= float(n)
     all_bleus.insert(0, logbleu)
 
     brevPenalty = min(0,1-float(totalcomps['reflen'] + 1)/(totalcomps['testlen'] + 1))
     for i in range(len(all_bleus)):
-      if i ==0:
-        all_bleus[i] += brevPenalty
-      all_bleus[i] = math.exp(all_bleus[i])
+        if i ==0:
+            all_bleus[i] += brevPenalty
+        all_bleus[i] = math.exp(all_bleus[i])
     return all_bleus
+
 
 def bleu(refs,  candidate, ground=0, smooth=1):
     refs = cook_refs(refs)
     test = cook_test(candidate, refs)
     return score_cooked([test], ground=ground, smooth=smooth)
 
+
 def splitPuncts(line):
-  return ' '.join(re.findall(r"[\w]+|[^\s\w]", line))
+    return ' '.join(re.findall(r"[\w]+|[^\s\w]", line))
+
 
 def computeMaps(predictions, goldfile):
-  predictionMap = {}
-  goldMap = {}
+    predictionMap = {}
+    goldMap = {}
   
-  for row in predictions:
-    cols = row.strip().split('\t')
-    if len(cols) == 1:
-      (rid, pred) = (cols[0], '') 
-    else:
-      (rid, pred) = (cols[0], cols[1]) 
-    predictionMap[rid] = [splitPuncts(pred.strip().lower())]
+    for row in predictions:
+        cols = row.strip().split('\t')
+        if len(cols) == 1:
+            (rid, pred) = (cols[0], '') 
+        else:
+            (rid, pred) = (cols[0], cols[1]) 
+        predictionMap[rid] = [splitPuncts(pred.strip().lower())]
 
-  with open(goldfile, 'r') as f:
-    for row in f:
-      cols = row.strip().split('\t')
-      if len(cols) == 1:
-        (rid, pred) = (cols[0], '')
-      else:
-        (rid, pred) = (cols[0], cols[1])
-      if rid in predictionMap: # Only insert if the id exists for the method
-        if rid not in goldMap:
-          goldMap[rid] = []
-        goldMap[rid].append(splitPuncts(pred.strip().lower()))
+    with open(goldfile, 'r') as f:
+        for row in f:
+            cols = row.strip().split('\t')
+            if len(cols) == 1:
+                (rid, pred) = (cols[0], '')
+            else:
+                (rid, pred) = (cols[0], cols[1])
+        if rid in predictionMap: # Only insert if the id exists for the method
+            if rid not in goldMap:
+                goldMap[rid] = []
+            goldMap[rid].append(splitPuncts(pred.strip().lower()))
 
   # sys.stderr.write('Total: ' + str(len(goldMap)) + '\n')
-  return (goldMap, predictionMap)
+    return (goldMap, predictionMap)
+
 
 def computeMaps_2list(predictions, gold):
-  predictionMap = {}
-  goldMap = {}
+    predictionMap = {}
+    goldMap = {}
   
-  for row in predictions:
-    cols = row.strip().split('\t')
-    if len(cols) == 1:
-      (rid, pred) = (cols[0], '') 
-    else:
-      (rid, pred) = (cols[0], cols[1]) 
-    predictionMap[rid] = [splitPuncts(pred.strip().lower())]
+    for row in predictions:
+        cols = row.strip().split('\t')
+        if len(cols) == 1:
+            (rid, pred) = (cols[0], '') 
+        else:
+            (rid, pred) = (cols[0], cols[1]) 
+        predictionMap[rid] = [splitPuncts(pred.strip().lower())]
 
-  for row in gold:
-    split_row = row.split('\t')
-    if len(split_row) == 1:
-      (rid, pred) = (split_row[0], '')
-    elif len(split_row) == 2:
-      (rid, pred) = (split_row[0], split_row[1])
-    else:
-      (rid, pred) = (split_row[0], '\t'.join(split_row[1:])) 
-    if rid in predictionMap: # Only insert if the id exists for the method
-      if rid not in goldMap:
-        goldMap[rid] = []
-      goldMap[rid].append(splitPuncts(pred.strip().lower()))
+    for row in gold:
+        split_row = row.split('\t')
+        if len(split_row) == 1:
+            (rid, pred) = (split_row[0], '')
+        elif len(split_row) == 2:
+            (rid, pred) = (split_row[0], split_row[1])
+        else:
+            (rid, pred) = (split_row[0], '\t'.join(split_row[1:])) 
+        if rid in predictionMap: # Only insert if the id exists for the method
+            if rid not in goldMap:
+                goldMap[rid] = []
+            goldMap[rid].append(splitPuncts(pred.strip().lower()))
 
   # sys.stderr.write('Total: ' + str(len(goldMap)) + '\n')
-  return (goldMap, predictionMap)
+    return (goldMap, predictionMap)
+
 
 def direct_computeMaps(pred, gold):
-  predictionMap = {}
-  goldMap = {}
+    predictionMap = {}
+    goldMap = {}
   
-  predictionMap['0'] = [splitPuncts(pred.strip().lower())]
+    predictionMap['0'] = [splitPuncts(pred.strip().lower())]
 
-  goldMap['0'] = []
-  goldMap['0'].append(splitPuncts(gold.strip().lower()))
+    goldMap['0'] = []
+    goldMap['0'].append(splitPuncts(gold.strip().lower()))
 
   # sys.stderr.write('Total: ' + str(len(goldMap)) + '\n')
-  return (goldMap, predictionMap)
+    return (goldMap, predictionMap)
+
 
 def computeMaps_multiple(jsonfile, k):
-  predictionMap = {}
-  goldMap = {}
+    predictionMap = {}
+    goldMap = {}
   
-  with open(jsonfile, 'r') as f:
-    data = json.load(f)
-  for idx in data:
-    predictions = data[idx][0]
-    gold = data[idx][1]
+    with open(jsonfile, 'r') as f:
+        data = json.load(f)
+    for idx in data:
+        predictions = data[idx][0]
+        gold = data[idx][1]
 
-    for pred in predictions[:k]:
-      if idx not in predictionMap:
-        predictionMap[idx] = [splitPuncts(pred.strip().lower())]
-      else:
-        predictionMap[idx].append(splitPuncts(pred.strip().lower()))
+        for pred in predictions[:k]:
+            if idx not in predictionMap:
+                predictionMap[idx] = [splitPuncts(pred.strip().lower())]
+            else:
+                predictionMap[idx].append(splitPuncts(pred.strip().lower()))
 
-    if idx not in goldMap:
-      goldMap[idx] = [splitPuncts(gold.strip().lower())]
-    else:
-      goldMap[idx].append(splitPuncts(gold.strip().lower()))
+        if idx not in goldMap:
+            goldMap[idx] = [splitPuncts(gold.strip().lower())]
+        else:
+            goldMap[idx].append(splitPuncts(gold.strip().lower()))
 
-  return (goldMap, predictionMap)
+    return (goldMap, predictionMap)
 
-#m1 is the reference map
-#m2 is the prediction map
+
+# m1 is the reference map
+# m2 is the prediction map
 def bleuFromMaps(m1, m2):
-  score = [0] * 5
-  num = 0.0
+    score = [0] * 5
+    num = 0.0
   
-  for key in m1:
-    if key in m2:
-      if len(m2[key]) == 1:
-        bl = bleu(m1[key], m2[key][0])
-      else:
-        bls = []
-        for i in range(0, len(m2[key])):
-          bls.append(bleu(m1[key], m2[key][i]))
-        bl = [max([bls[j][i] for j in range(0, len(bls))]) for i in range(0, len(bls[0]))]
-      score = [ score[i] + bl[i] for i in range(0, len(bl))]
-      num += 1
-  return [s * 100.0 / num for s in score]
+    for key in m1:
+        if key in m2:
+            if len(m2[key]) == 1:
+                bl = bleu(m1[key], m2[key][0])
+            else:
+                bls = []
+                for i in range(0, len(m2[key])):
+                    bls.append(bleu(m1[key], m2[key][i]))
+                bl = [max([bls[j][i] for j in range(0, len(bls))]) for i in range(0, len(bls[0]))]
+            score = [score[i] + bl[i] for i in range(0, len(bl))]
+            num += 1
+    return [s * 100.0 / num for s in score]
 
 if __name__ == '__main__':
-  reference_file = sys.argv[1]
-  predictions = []
-  for row in sys.stdin:
-    predictions.append(row)
-  (goldMap, predictionMap) = computeMaps(predictions, reference_file) 
-  print (bleuFromMaps(goldMap, predictionMap)[0])
+    eference_file = sys.argv[1]
+    predictions = []
+    for row in sys.stdin:
+        predictions.append(row)
+    (goldMap, predictionMap) = computeMaps(predictions, reference_file) 
+    print (bleuFromMaps(goldMap, predictionMap)[0])
 

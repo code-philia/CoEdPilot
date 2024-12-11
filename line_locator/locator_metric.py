@@ -8,7 +8,8 @@ def all_in_one(output, gold):
         ground_truth = f.readlines()
 
     # same line number:
-    assert len(predictions) == len(ground_truth)
+    assert len(predictions) == len(ground_truth), "The length of predictions and ground truth must be the same."
+
     em = 0
     total_label = 0
     match_label = 0
@@ -22,8 +23,9 @@ def all_in_one(output, gold):
                 total_label += 1
                 if pd[j] == gt[j]:
                     match_label += 1
-    print(f'EM: {em/len(predictions)*100:.2f}%')
-    print(f'Accuracy: {match_label/total_label*100:.2f}%')
+
+    print(f'EM: {em / len(predictions) * 100:.2f}%')
+    print(f'Accuracy: {match_label / total_label * 100:.2f}%')
 
     y_pred = []
     y_true = []
@@ -34,19 +36,18 @@ def all_in_one(output, gold):
         if len(pd) == len(gt):
             y_pred.extend([label_map[x] for x in pd])
             y_true.extend([label_map[x] for x in gt])
-    
-    
+
     # 计算多标签的精确度
     precision = precision_score(y_true, y_pred, average='macro')
-    print(f'Precision(macro): {precision*100:.2f}%')
+    print(f'Precision(macro): {precision * 100:.2f}%')
 
     # 计算多标签的召回率
     recall = recall_score(y_true, y_pred, average='macro')
-    print(f'Recall(macro): {recall*100:.2f}%')
+    print(f'Recall(macro): {recall * 100:.2f}%')
 
     # 计算多标签的F1分数
     f1 = f1_score(y_true, y_pred, average='macro')
-    print(f'F1(macro): {f1*100:.2f}%')
+    print(f'F1(macro): {f1 * 100:.2f}%')
 
 
 if __name__ == '__main__':

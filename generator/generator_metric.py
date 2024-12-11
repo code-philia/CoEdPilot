@@ -1,5 +1,6 @@
-import bleu
 import json
+
+import bleu
 
 def all_in_one(output):
     with open(output, 'r') as f:
@@ -32,7 +33,6 @@ def all_in_one(output):
                 elif idx < 10:
                     em_10 += 1
                     break
-
 
     print('EM@1:', round(em_1/len(test_set)*100, 2))
     print('EM@3:', round(em_3/len(test_set)*100, 2))

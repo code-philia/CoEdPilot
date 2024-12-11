@@ -1,12 +1,15 @@
 # Copyright (c) Microsoft Corporation. 
 # Licensed under the MIT license.
 
+
+import copy
 import torch
 import torch.nn as nn
 import torch
 from torch.autograd import Variable
-import copy
 from transformers import AutoTokenizer, RobertaForSequenceClassification
+
+
 class Seq2Seq(nn.Module):
     """
         Build Seqence-to-Sequence.
@@ -71,7 +74,8 @@ class Seq2Seq(nn.Module):
             return outputs
         else:
             return lm_logits
-        
+
+
 class Beam(object):
     def __init__(self, size,sos,eos):
         self.size = size
@@ -133,7 +137,6 @@ class Beam(object):
         prevK = bestScoresId // numWords
         self.prevKs.append(prevK)
         self.nextYs.append((bestScoresId - prevK * numWords))
-
 
         for i in range(self.nextYs[-1].size(0)):
             if self.nextYs[-1][i] == self._eos:
