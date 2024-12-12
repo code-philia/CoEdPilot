@@ -1,15 +1,21 @@
+# Standard library imports
 import os
-import torch
 
-import numpy as np
-import torch.nn as nn
+# Third-party imports
 from huggingface_hub import PyTorchModelHubMixin
-from transformers import EncoderDecoderModel, RobertaTokenizerFast, PreTrainedModel
-from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from torch.utils.data import TensorDataset
+from transformers import EncoderDecoderModel
+from transformers import PreTrainedModel
+from transformers import RobertaTokenizerFast
+from typing import Union
 
 class DependencyAnalyzer(nn.Module, PyTorchModelHubMixin):
-    def __init__(self, encoder: PreTrainedModel | None = None,
-                 match_tokenizer: RobertaTokenizerFast | None = None):
+    def __init__(self, encoder: Union[PreTrainedModel, None] = None,
+                 match_tokenizer: Union[RobertaTokenizerFast, None] = None):
         super(DependencyAnalyzer, self).__init__()
         if not encoder:
             encoder: PreTrainedModel = EncoderDecoderModel.from_encoder_decoder_pretrained("microsoft/codebert-base", "microsoft/codebert-base").encoder
@@ -23,7 +29,7 @@ class DependencyAnalyzer(nn.Module, PyTorchModelHubMixin):
         self.dense = nn.Linear(768, 2)
 
     def forward(self, input_ids, attention_mask):
-        outputs = self.encoder(input_ids=input_ids, attention_mask=attention_mask)
+        outputs = self.encoder(input_ids = input_ids, attention_mask = attention_mask)
         pooler_output = outputs.pooler_output
         output_2d = self.dense(pooler_output)
         return output_2d
@@ -36,8 +42,8 @@ def load_model_and_tokenizer(model_dir: str,
         if model_with_structure_dir:
             model = DependencyAnalyzer.from_pretrained(model_with_structure_dir)
         else:
-            model = DependencyAnalyzer(match_tokenizer=tokenizer)
-            model.load_state_dict(torch.load(os.path.join(model_dir,'pytorch_model.bin')))
+            model = DependencyAnalyzer(match_tokenizer = tokenizer)
+            model.load_state_dict(torch.load(os.path.join(model_dir, 'pytorch_model.bin')))
         return model, tokenizer
 
     model = EncoderDecoderModel.from_pretrained(model_dir)
@@ -58,6 +64,7 @@ def load_model_and_tokenizer(model_dir: str,
 
     return model, tokenizer
 
+
 class DependencyClassifier:
     def __init__(self,
                  load_dir:str="../dependency_analyzer/model",
@@ -77,14 +84,14 @@ class DependencyClassifier:
 
     def gen(self, text: str):
         sigmoid = nn.Sigmoid()
-        token_input = self.tokenizer(text, return_tensors='pt') # ATTENTION: converted to batch here
+        token_input = self.tokenizer(text, return_tensors = 'pt') # ATTENTION: converted to batch here
         if torch.cuda.is_available():
             token_input = token_input.to(self.device)
 
         with torch.no_grad():
             outputs = self.model(               
-                input_ids=token_input['input_ids'],
-                attention_mask=token_input['attention_mask']
+                input_ids = token_input['input_ids'],
+                attention_mask = token_input['attention_mask']
                 )[0]
         outputs = sigmoid(outputs).detach().cpu()
         return outputs[1]
@@ -93,7 +100,7 @@ class DependencyClassifier:
         sigmoid = nn.Sigmoid()
         token_input = self.tokenizer(corpus_pair, return_tensors='pt', padding=True, truncation=True, max_length=512)
         dataset = TensorDataset(token_input["input_ids"], token_input["attention_mask"])
-        dataloader = DataLoader(dataset, batch_size=32, shuffle=False)
+        dataloader = DataLoader(dataset, batch_size = 32, shuffle = False)
         
         preds = []
         with torch.no_grad():
@@ -102,9 +109,10 @@ class DependencyClassifier:
                 outputs = self.model(input_ids=batch_input, attention_mask=attention_mask)
                 outputs = sigmoid(outputs)[:,1]
                 preds.append(outputs.detach().cpu())
-        preds = torch.cat(preds, dim=0)
+        preds = torch.cat(preds, dim = 0)
         return preds.numpy()
-    
+
+
 def cal_dep_score(hunk: dict, file_content: str, dependency_analyzer: DependencyClassifier):
     def split2window_str(lines):
         windows = []

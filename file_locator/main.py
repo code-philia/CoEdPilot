@@ -1,40 +1,60 @@
-import os
+# Standard library imports
 import json
-import torch
+import os
 import random
-import jsonlines
 import subprocess
-import numpy as np
-from tqdm import tqdm
-from torch.utils.data import DataLoader
-from sklearn.linear_model import LinearRegression
-from transformers import RobertaTokenizer, RobertaModel
-from siamese_net import train_embedding_model, evaluate_embedding_model, load_siamese_data
-from dependency_analyzer import DependencyClassifier, cal_dep_score
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
-def mv_large_file(dataset: list[dict]) -> list[dict]:
+# Third-party imports
+import jsonlines
+import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import f1_score
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+import torch
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+from transformers import RobertaTokenizer
+from transformers import RobertaModel
+from typing import List, Dict
+
+# Local application imports
+from dependency_analyzer import cal_dep_score
+from dependency_analyzer import DependencyClassifier
+from siamese_net import evaluate_embedding_model
+from siamese_net import load_siamese_data
+from siamese_net import train_embedding_model
+
+def mv_large_file(dataset: List[Dict]) -> List[Dict]:
+    """
+    This function filters out large files from the dataset.
+    """
     new_dataset = []
     for sample in dataset:
         if len(sample["file"].splitlines()) // 30 + 1 <= 25:
             new_dataset.append(sample)
     return new_dataset
 
+
 def list_files_in_directory(git_repo_path: str, sha: str, user_name: str) -> list[str]:
+    """
+    This function lists files in a directory for a given git repository and commit SHA.
+    """
     if os.path.exists(git_repo_path) == False:
         repos_path, proj_name = git_repo_path.rsplit('/', 1)
         print(f"Cloning {proj_name} to {repos_path}")
         # git clone the repo to the path
         command = f"git clone https://github.com/{user_name}/{proj_name}.git {git_repo_path}"
         try:
-            subprocess.run(command, shell=True, check=True)
+            subprocess.run(command, shell = True, check = True)
         except subprocess.CalledProcessError as e:
             print(f"Error executing command: {e}")
             print(f"Error output: {e.output}")
             return None
     command = f"git -C {git_repo_path} ls-tree --name-only -r {sha}"
     try:
-        result = subprocess.run(command, shell=True, capture_output=True, text=True, check=True)
+        result = subprocess.run(command, shell = True, capture_output = True, text = True, check = True)
         file_list = result.stdout.splitlines()
     except subprocess.CalledProcessError as e:
         print(f"Error executing command: {e}")
@@ -58,7 +78,7 @@ def main(lang: str, recalculate_dep_score: bool, test_only: bool, debug_mode: bo
         if "dependency_score" not in dataset[0].keys() or recalculate_dep_score:
             dependency_analyzer = DependencyClassifier(device=device)
             
-            for sample in tqdm(dataset, desc="Calculating dependency score"):
+            for sample in tqdm(dataset, desc = "Calculating dependency score"):
                 hunk = sample["hunk"]
                 file_content = sample["file"]
                 dep_score_list = cal_dep_score(hunk, file_content, dependency_analyzer)
@@ -81,8 +101,8 @@ def main(lang: str, recalculate_dep_score: bool, test_only: bool, debug_mode: bo
     if not test_only:
         tensor_train_dataset = load_siamese_data(train_dataset, tokenizer, debug_mode)
         tensor_val_dataset = load_siamese_data(val_dataset, tokenizer, debug_mode)
-        train_dataloader = DataLoader(tensor_train_dataset, batch_size=1, shuffle=True)
-        val_dataloader = DataLoader(tensor_val_dataset, batch_size=1, shuffle=True)
+        train_dataloader = DataLoader(tensor_train_dataset, batch_size = 1, shuffle = True)
+        val_dataloader = DataLoader(tensor_val_dataset, batch_size = 1, shuffle = True)
         epoch = 1 if debug_mode else 4
         train_embedding_model(embedding_model, train_dataloader, val_dataloader, 1e-5, epoch, lang)
     else:
@@ -94,8 +114,8 @@ def main(lang: str, recalculate_dep_score: bool, test_only: bool, debug_mode: bo
     # Step 4: Calculate the semantic similarity between the edit and the file for val & test dataset
     tensor_val_dataset = load_siamese_data(val_dataset, tokenizer, debug_mode)
     tensor_test_dataset = load_siamese_data(test_dataset, tokenizer, debug_mode)
-    val_dataloader = DataLoader(tensor_val_dataset, batch_size=1, shuffle=False)
-    test_dataloader = DataLoader(tensor_test_dataset, batch_size=1, shuffle=False)
+    val_dataloader = DataLoader(tensor_val_dataset, batch_size = 1, shuffle = False)
+    test_dataloader = DataLoader(tensor_test_dataset, batch_size = 1, shuffle = False)
     val_embedding_similiarity = evaluate_embedding_model(embedding_model, val_dataloader, "valid")
     test_embedding_similiarity = evaluate_embedding_model(embedding_model, test_dataloader, "test")
 
@@ -131,10 +151,10 @@ def main(lang: str, recalculate_dep_score: bool, test_only: bool, debug_mode: bo
     recall = recall_score(y_test, y_pred)
     f1 = f1_score(y_test, y_pred)
     print(f"Lang: {lang}, Linear regression model result (combine with dependency score):")
-    print(f"Accuracy: {accuracy*100:.2f}%")
-    print(f"Precision: {precision*100:.2f}%")
-    print(f"Recall: {recall*100:.2f}%")
-    print(f"F1: {f1*100:.2f}%")
+    print(f"Accuracy: {accuracy * 100:.2f}%")
+    print(f"Precision: {precision * 100:.2f}%")
+    print(f"Recall: {recall * 100:.2f}%")
+    print(f"F1: {f1 * 100:.2f}%")
     
 if __name__ == "__main__":
     random.seed(42)
