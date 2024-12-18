@@ -32,15 +32,11 @@ jobs:
         run: |
           autopep8 --in-place --aggressive --recursive .
 
-      - name: Check for changes
+      - name: Commit and push changes
         run: |
-          git diff --exit-code
-
-          - name: Commit and push changes
-          run: |
-            git config --global user.name "talented-watermelon"
-            git config --global user.email "1980207347@qq.com"
-            git add .
-            git commit -m "Fix PEP 8 issues"
-            git push
+          git config --global user.name "talented-watermelon"
+          git config --global user.email "1980207347@qq.com"
+          git add .
+          git commit -m "Fix PEP 8 issues"
+          git push
         if: ${{ success() }}
