@@ -18,4 +18,4 @@ jobs:
         pip install pycodestyle
     - name: PEP 8 Style Check
       run: |
-        pycodestyle . --select=E,W --show-source --show-pycodestyle
+        pycodestyle . --select=E,W --show-source --show-pep8
