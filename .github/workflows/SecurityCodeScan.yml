@@ -1,0 +1,30 @@
+name: SecurityCodeScan
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+    
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: [ubuntu-latest]
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['python']
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+      
+    - name: Init CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
