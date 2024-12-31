@@ -12,30 +12,35 @@ from transformers import AutoTokenizer, RobertaForSequenceClassification
 
 class Seq2Seq(nn.Module):
     """
-        Build Seqence-to-Sequence.
+    Build Seqence-to-Sequence.
 
-        Parameters:
+    Parameters:
 
-        * `encoder`- encoder of seq2seq model. e.g. roberta
-        * `decoder`- decoder of seq2seq model. e.g. transformer
-        * `config`- configuration of encoder model.
-        * `beam_size`- beam size for beam search.
-        * `max_length`- max length of target for beam search.
-        * `sos_id`- start of symbol ids in target for beam search.
-        * `eos_id`- end of symbol ids in target for beam search.
+    * `encoder`- encoder of seq2seq model. e.g. roberta
+    * `decoder`- decoder of seq2seq model. e.g. transformer
+    * `config`- configuration of encoder model.
+    * `beam_size`- beam size for beam search.
+    * `max_length`- max length of target for beam search.
+    * `sos_id`- start of symbol ids in target for beam search.
+    * `eos_id`- end of symbol ids in target for beam search.
     """
 
-    def __init__(self, encoder, config, beam_size=None,
-                 max_length=None, sos_id=None, eos_id=None, mask_id=None):
+    def __init__(
+        self,
+        encoder,
+        config,
+        beam_size=None,
+        max_length=None,
+        sos_id=None,
+        eos_id=None,
+        mask_id=None,
+    ):
         super(Seq2Seq, self).__init__()
         self.encoder = encoder
         self.config = config
         self.register_buffer("bias", torch.tril(torch.ones(2048, 2048)))
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-        self.lm_head = nn.Linear(
-            config.hidden_size,
-            config.vocab_size,
-            bias=False)
+        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
         self.lsm = nn.LogSoftmax(dim=-1)
         self.tie_weights()
 
@@ -48,35 +53,44 @@ class Seq2Seq(nn.Module):
         self.label_weight[self.mask_id] = 1.0
 
     def _tie_or_clone_weights(self, first_module, second_module):
-        """ Tie or clone module weights depending of weither we are using TorchScript or not
-        """
+        """Tie or clone module weights depending of weither we are using TorchScript or not"""
         if self.config.torchscript:
             first_module.weight = nn.Parameter(second_module.weight.clone())
         else:
             first_module.weight = second_module.weight
 
     def tie_weights(self):
-        """ Make sure we are sharing the input and output embeddings.
-            Export to TorchScript can't handle parameter sharing so we are cloning them instead.
+        """Make sure we are sharing the input and output embeddings.
+        Export to TorchScript can't handle parameter sharing so we are cloning them instead.
         """
-        self._tie_or_clone_weights(self.lm_head,
-                                   self.encoder.embeddings.word_embeddings)
+        self._tie_or_clone_weights(
+            self.lm_head, self.encoder.embeddings.word_embeddings
+        )
 
-    def forward(self, source_ids=None, source_mask=None,
-                target_ids=None, target_mask=None, train=True):
+    def forward(
+        self,
+        source_ids=None,
+        source_mask=None,
+        target_ids=None,
+        target_mask=None,
+        train=True,
+    ):
         outputs = self.encoder(source_ids, attention_mask=source_mask)
         encoder_output = outputs[0].permute([1, 0, 2]).contiguous()
-        hidden_states = torch.tanh(self.dense(
-            encoder_output)).permute([1, 0, 2]).contiguous()
+        hidden_states = (
+            torch.tanh(self.dense(encoder_output)).permute([1, 0, 2]).contiguous()
+        )
         lm_logits = self.lm_head(hidden_states).contiguous()
         if train:
             # Flatten the tokens
-            active_loss = (source_ids == self.mask_id).contiguous(
-            ).view(-1)  # find which tokens are masked
+            active_loss = (
+                (source_ids == self.mask_id).contiguous().view(-1)
+            )  # find which tokens are masked
             # get the labels of the masked tokens
             labels = target_ids.contiguous().view(-1)[active_loss]
-            filtered_logits = lm_logits.contiguous().view(-1,
-                                                          self.config.vocab_size)[active_loss]  # get the logits of the masked tokens
+            filtered_logits = lm_logits.contiguous().view(-1, self.config.vocab_size)[
+                active_loss
+            ]  # get the logits of the masked tokens
 
             loss_fct = nn.CrossEntropyLoss(ignore_index=-1)
             loss = loss_fct(filtered_logits, labels)
@@ -95,8 +109,7 @@ class Beam(object):
         # The backpointers at each time-step.
         self.prevKs = []
         # The outputs at each time-step.
-        self.nextYs = [self.tt.LongTensor(size)
-                       .fill_(0)]
+        self.nextYs = [self.tt.LongTensor(size).fill_(0)]
         self.nextYs[0][0] = sos
         # Has EOS topped the beam yet.
         self._eos = eos
@@ -171,8 +184,8 @@ class Beam(object):
                     s = self.scores[i]
                     unfinished.append((s, len(self.nextYs) - 1, i))
             unfinished.sort(key=lambda a: -a[0])
-            self.finished += unfinished[:self.size - len(self.finished)]
-        return self.finished[:self.size]
+            self.finished += unfinished[: self.size - len(self.finished)]
+        return self.finished[: self.size]
 
     def getHyp(self, beam_res):
         """

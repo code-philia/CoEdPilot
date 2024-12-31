@@ -1,25 +1,32 @@
 import unittest
-from bleu import (
-    normalize, count_ngrams, cook_refs,
-    cook_test, bleuFromMaps, bleu)
+from bleu import normalize, count_ngrams, cook_refs, cook_test, bleuFromMaps, bleu
 
 
 class TestBLEUFunctions(unittest.TestCase):
 
     def test_normalize(self):
-        self.assertEqual(normalize("This, is a test!"), [
-                         "this", ",", "is", "a", "test", "!"])
+        self.assertEqual(
+            normalize("This, is a test!"), ["this", ",", "is", "a", "test", "!"]
+        )
         self.assertEqual(normalize("Hello\nWorld"), ["hello", "world"])
-        self.assertEqual(normalize("No-Extra    Spaces"),
-                         ["no-extra", "spaces"])
+        self.assertEqual(normalize("No-Extra    Spaces"), ["no-extra", "spaces"])
 
     def test_count_ngrams(self):
         words = ["this", "is", "a", "a", "test"]
         counts = count_ngrams(words, n=2)
-        self.assertEqual(counts, {
-            ("this",): 1, ("is",): 1, ("a",): 2, ("test",): 1,
-            ("this", "is"): 1, ("is", "a"): 1, ("a", "a"): 1, ("a", "test"): 1
-        })
+        self.assertEqual(
+            counts,
+            {
+                ("this",): 1,
+                ("is",): 1,
+                ("a",): 2,
+                ("test",): 1,
+                ("this", "is"): 1,
+                ("is", "a"): 1,
+                ("a", "a"): 1,
+                ("a", "test"): 1,
+            },
+        )
 
     def test_cook_refs(self):
         refs = ["this is a test", "this is another test"]
