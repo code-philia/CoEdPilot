@@ -38,7 +38,7 @@ class Seq2Seq(nn.Module):
         self.encoder = encoder
         self.decoder = decoder
         self.config = config
-        self.register_buffer("bias", torch.tril(torch.ones(2048, 2048)))
+        self.register_buffer('bias', torch.tril(torch.ones(2048, 2048)))
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
         self.lsm = nn.LogSoftmax(dim=-1)
@@ -60,24 +60,15 @@ class Seq2Seq(nn.Module):
         """Make sure we are sharing the input and output embeddings.
         Export to TorchScript can't handle parameter sharing so we are cloning them instead.
         """
-        self._tie_or_clone_weights(
-            self.lm_head, self.encoder.embeddings.word_embeddings
-        )
+        self._tie_or_clone_weights(self.lm_head, self.encoder.embeddings.word_embeddings)
 
     def forward(
-        self,
-        source_ids=None,
-        source_mask=None,
-        target_ids=None,
-        target_mask=None,
-        args=None,
+        self, source_ids=None, source_mask=None, target_ids=None, target_mask=None, args=None,
     ):
         outputs = self.encoder(source_ids, attention_mask=source_mask)
         encoder_output = outputs[0].permute([1, 0, 2]).contiguous()
         if target_ids is not None:
-            attn_mask = -1e4 * (
-                1 - self.bias[: target_ids.shape[1], : target_ids.shape[1]]
-            )
+            attn_mask = -1e4 * (1 - self.bias[: target_ids.shape[1], : target_ids.shape[1]])
             tgt_embeddings = (
                 self.encoder.embeddings(target_ids).permute([1, 0, 2]).contiguous()
             )
@@ -121,9 +112,7 @@ class Seq2Seq(nn.Module):
                         1 - self.bias[: input_ids.shape[1], : input_ids.shape[1]]
                     )
                     tgt_embeddings = (
-                        self.encoder.embeddings(input_ids)
-                        .permute([1, 0, 2])
-                        .contiguous()
+                        self.encoder.embeddings(input_ids).permute([1, 0, 2]).contiguous()
                     )
                     out = self.decoder(
                         tgt_embeddings,
@@ -171,12 +160,12 @@ class Beam(object):
         self.finished = []
 
     def getCurrentState(self):
-        "Get the outputs for the current timestep."
+        'Get the outputs for the current timestep.'
         batch = self.tt.LongTensor(self.nextYs[-1]).view(-1, 1)
         return batch
 
     def getCurrentOrigin(self):
-        "Get the backpointers for the current timestep."
+        'Get the backpointers for the current timestep.'
         return self.prevKs[-1]
 
     def advance(self, wordLk):
