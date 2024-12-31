@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation. 
+# Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
 
@@ -13,35 +13,40 @@ from transformers import AutoTokenizer, RobertaForSequenceClassification
 class Seq2Seq(nn.Module):
     """
         Build Seqence-to-Sequence.
-        
+
         Parameters:
 
         * `encoder`- encoder of seq2seq model. e.g. roberta
         * `decoder`- decoder of seq2seq model. e.g. transformer
-        * `config`- configuration of encoder model. 
-        * `beam_size`- beam size for beam search. 
-        * `max_length`- max length of target for beam search. 
+        * `config`- configuration of encoder model.
+        * `beam_size`- beam size for beam search.
+        * `max_length`- max length of target for beam search.
         * `sos_id`- start of symbol ids in target for beam search.
-        * `eos_id`- end of symbol ids in target for beam search. 
+        * `eos_id`- end of symbol ids in target for beam search.
     """
-    def __init__(self, encoder,config,beam_size=None,max_length=None,sos_id=None,eos_id=None,mask_id=None):
+
+    def __init__(self, encoder, config, beam_size=None,
+                 max_length=None, sos_id=None, eos_id=None, mask_id=None):
         super(Seq2Seq, self).__init__()
         self.encoder = encoder
-        self.config=config
+        self.config = config
         self.register_buffer("bias", torch.tril(torch.ones(2048, 2048)))
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        self.lm_head = nn.Linear(
+            config.hidden_size,
+            config.vocab_size,
+            bias=False)
         self.lsm = nn.LogSoftmax(dim=-1)
         self.tie_weights()
-        
-        self.beam_size=beam_size
-        self.max_length=max_length
-        self.sos_id=sos_id
-        self.eos_id=eos_id
-        self.mask_id=mask_id
+
+        self.beam_size = beam_size
+        self.max_length = max_length
+        self.sos_id = sos_id
+        self.eos_id = eos_id
+        self.mask_id = mask_id
         self.label_weight = torch.zeros(config.vocab_size)
         self.label_weight[self.mask_id] = 1.0
-        
+
     def _tie_or_clone_weights(self, first_module, second_module):
         """ Tie or clone module weights depending of weither we are using TorchScript or not
         """
@@ -49,35 +54,40 @@ class Seq2Seq(nn.Module):
             first_module.weight = nn.Parameter(second_module.weight.clone())
         else:
             first_module.weight = second_module.weight
-                  
+
     def tie_weights(self):
         """ Make sure we are sharing the input and output embeddings.
             Export to TorchScript can't handle parameter sharing so we are cloning them instead.
         """
         self._tie_or_clone_weights(self.lm_head,
-                                   self.encoder.embeddings.word_embeddings)  
-                                   
-    def forward(self, source_ids=None,source_mask=None,target_ids=None,target_mask=None,train=True):   
+                                   self.encoder.embeddings.word_embeddings)
+
+    def forward(self, source_ids=None, source_mask=None,
+                target_ids=None, target_mask=None, train=True):
         outputs = self.encoder(source_ids, attention_mask=source_mask)
-        encoder_output = outputs[0].permute([1,0,2]).contiguous()
-        hidden_states = torch.tanh(self.dense(encoder_output)).permute([1,0,2]).contiguous()
+        encoder_output = outputs[0].permute([1, 0, 2]).contiguous()
+        hidden_states = torch.tanh(self.dense(
+            encoder_output)).permute([1, 0, 2]).contiguous()
         lm_logits = self.lm_head(hidden_states).contiguous()
         if train:
             # Flatten the tokens
-            active_loss = (source_ids == self.mask_id).contiguous().view(-1) # find which tokens are masked
-            labels = target_ids.contiguous().view(-1)[active_loss] # get the labels of the masked tokens
-            filtered_logits = lm_logits.contiguous().view(-1, self.config.vocab_size)[active_loss] # get the logits of the masked tokens
+            active_loss = (source_ids == self.mask_id).contiguous(
+            ).view(-1)  # find which tokens are masked
+            # get the labels of the masked tokens
+            labels = target_ids.contiguous().view(-1)[active_loss]
+            filtered_logits = lm_logits.contiguous().view(-1,
+                                                          self.config.vocab_size)[active_loss]  # get the logits of the masked tokens
 
             loss_fct = nn.CrossEntropyLoss(ignore_index=-1)
             loss = loss_fct(filtered_logits, labels)
-            outputs = loss,loss*active_loss.sum(),active_loss.sum()
+            outputs = loss, loss * active_loss.sum(), active_loss.sum()
             return outputs
         else:
             return lm_logits
 
 
 class Beam(object):
-    def __init__(self, size,sos,eos):
+    def __init__(self, size, sos, eos):
         self.size = size
         self.tt = torch.cuda
         # The score for each translation on the beam.
@@ -148,43 +158,42 @@ class Beam(object):
             self.eosTop = True
 
     def done(self):
-        return self.eosTop and len(self.finished) >=self.size
+        return self.eosTop and len(self.finished) >= self.size
 
     def getFinal(self):
         if len(self.finished) == 0:
             self.finished.append((self.scores[0], len(self.nextYs) - 1, 0))
         self.finished.sort(key=lambda a: -a[0])
         if len(self.finished) != self.size:
-            unfinished=[]
+            unfinished = []
             for i in range(self.nextYs[-1].size(0)):
                 if self.nextYs[-1][i] != self._eos:
                     s = self.scores[i]
-                    unfinished.append((s, len(self.nextYs) - 1, i)) 
+                    unfinished.append((s, len(self.nextYs) - 1, i))
             unfinished.sort(key=lambda a: -a[0])
-            self.finished+=unfinished[:self.size-len(self.finished)]
+            self.finished += unfinished[:self.size - len(self.finished)]
         return self.finished[:self.size]
 
     def getHyp(self, beam_res):
         """
         Walk back to construct the full hypothesis.
         """
-        hyps=[]
-        for _,timestep, k in beam_res:
+        hyps = []
+        for _, timestep, k in beam_res:
             hyp = []
             for j in range(len(self.prevKs[:timestep]) - 1, -1, -1):
-                hyp.append(self.nextYs[j+1][k])
+                hyp.append(self.nextYs[j + 1][k])
                 k = self.prevKs[j][k]
             hyps.append(hyp[::-1])
         return hyps
-    
+
     def buildTargetTokens(self, preds):
-        sentence=[]
+        sentence = []
         for pred in preds:
             tokens = []
             for tok in pred:
-                if tok==self._eos:
+                if tok == self._eos:
                     break
                 tokens.append(tok)
             sentence.append(tokens)
         return sentence
-        

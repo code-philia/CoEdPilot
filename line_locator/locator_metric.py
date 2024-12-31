@@ -1,6 +1,7 @@
 import bleu
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, classification_report, confusion_matrix
 
+
 def all_in_one(output, gold):
     with open(output, 'r') as f:
         predictions = f.readlines()
@@ -8,7 +9,8 @@ def all_in_one(output, gold):
         ground_truth = f.readlines()
 
     # same line number:
-    assert len(predictions) == len(ground_truth), "The length of predictions and ground truth must be the same."
+    assert len(predictions) == len(
+        ground_truth), "The length of predictions and ground truth must be the same."
 
     em = 0
     total_label = 0
