@@ -25,13 +25,15 @@ class TestMetrics(unittest.TestCase):
         em, acc = calc_em_acc(self.predictions, self.ground_truth)
         # Expected EM and Accuracy values
         expected_em = 0.8  # 4/5
-        expected_acc = 0.8  # 8/10 (since "add" vs "keep" in last example counts as mismatch)
+        # 8/10 (since "add" vs "keep" in last example counts as mismatch)
+        expected_acc = 0.8
 
         self.assertAlmostEqual(em, expected_em, places=2)
         self.assertAlmostEqual(acc, expected_acc, places=2)
 
     def test_calc_precision_recall_f1(self):
-        precision, recall, f1 = calc_precision_recall_f1(self.predictions, self.ground_truth)
+        precision, recall, f1 = calc_precision_recall_f1(
+            self.predictions, self.ground_truth)
         # Expected Precision, Recall, F1 values
         expected_precision = 5/6
         expected_recall = 8/9

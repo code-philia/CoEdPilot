@@ -7,9 +7,11 @@ from bleu import (
 class TestBLEUFunctions(unittest.TestCase):
 
     def test_normalize(self):
-        self.assertEqual(normalize("This, is a test!"), ["this", ",", "is", "a", "test", "!"])
+        self.assertEqual(normalize("This, is a test!"), [
+                         "this", ",", "is", "a", "test", "!"])
         self.assertEqual(normalize("Hello\nWorld"), ["hello", "world"])
-        self.assertEqual(normalize("No-Extra    Spaces"), ["no-extra", "spaces"])
+        self.assertEqual(normalize("No-Extra    Spaces"),
+                         ["no-extra", "spaces"])
 
     def test_count_ngrams(self):
         words = ["this", "is", "a", "a", "test"]
@@ -23,7 +25,8 @@ class TestBLEUFunctions(unittest.TestCase):
         refs = ["this is a test", "this is another test"]
         cooked_refs = cook_refs(refs)
         self.assertIn(("this", "is"), cooked_refs[1])
-        self.assertEqual(min(cooked_refs[0]), 4)  # Shortest reference length is 4.
+        # Shortest reference length is 4.
+        self.assertEqual(min(cooked_refs[0]), 4)
 
     def test_cook_test(self):
         refs = cook_refs(["this is a test"])
