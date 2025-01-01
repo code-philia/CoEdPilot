@@ -26,6 +26,7 @@ from siamese_net import evaluate_embedding_model
 from siamese_net import load_siamese_data
 from siamese_net import train_embedding_model
 
+MODEL_NAME = "huggingface/CodeBERTa-small-v1"
 
 def mv_large_file(dataset: List[Dict]) -> List[Dict]:
     """
@@ -98,18 +99,17 @@ def main(lang: str, recalculate_dep_score: bool, test_only: bool, debug_mode: bo
                 writer.write_all(dataset)
 
     # Step 2: load datasets
-    with open(os.path.join(dataset_dir, "train.jsonl"), encoding="utf-8") as f:
-        train_dataset = [json.loads(line) for line in f.readlines()]
-    with open(os.path.join(dataset_dir, "dev.jsonl"), encoding="utf-8") as f:
-        val_dataset = [json.loads(line) for line in f.readlines()]
-    with open(os.path.join(dataset_dir, "test.jsonl"), encoding="utf-8") as f:
-        test_dataset = [json.loads(line) for line in f.readlines()]
+    def load_dataset(file_path):
+        with open(file_path,encoding="utf-8") as f:
+            return [json.loads(line) for line in f.readlines()]
+
+    train_dataset = load_dataset(os.path.join(dataset_dir, "train.jsonl"))
+    val_dataset = load_dataset(os.path.join(dataset_dir, "dev.jsonl"))
+    test_dataset = load_dataset(os.path.join(dataset_dir, "test.jsonl"))
 
     # Step 3: Train a siamese network to learn embeddings
-    embedding_model = RobertaModel.from_pretrained(
-        "huggingface/CodeBERTa-small-v1")
-    tokenizer = RobertaTokenizer.from_pretrained(
-        "huggingface/CodeBERTa-small-v1")
+    embedding_model = RobertaModel.from_pretrained(MODEL_NAME)
+    tokenizer = RobertaTokenizer.from_pretrained(MODEL_NAME)
     if not test_only:
         tensor_train_dataset = load_siamese_data(
             train_dataset, tokenizer, debug_mode)
