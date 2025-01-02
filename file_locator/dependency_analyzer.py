@@ -125,7 +125,7 @@ class DependencyClassifier:
                 input_ids=token_input['input_ids'],
                 attention_mask=token_input['attention_mask']
             )[0]
-        outputs = sigmoid(outputs).detach().cpu()
+        outputs = torch.sigmoid(outputs).detach().cpu()
         return outputs[1]
 
     def batch_gen(self, corpus_pair: list[str]):
