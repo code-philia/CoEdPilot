@@ -47,21 +47,26 @@ def load_model_and_tokenizer(model_dir: str,
                              directly_load: bool = True,
                              model_with_structure_dir: str | None = None) -> tuple[DependencyAnalyzer, RobertaTokenizerFast]:
     if directly_load:
-        # 增强模型和分词器加载时的异常
+        # 增强模型和分词器加载时的异常处理
         try:
             tokenizer = RobertaTokenizerFast.from_pretrained(model_dir)
         except Exception as e:
             raise RuntimeError(f"Failed to load tokenizer from {model_dir}:{e}")
         if model_with_structure_dir:
-            model = DependencyAnalyzer.from_pretrained(
-                model_with_structure_dir)
+            try:
+                model = DependencyAnalyzer.from_pretrained(model_with_structure_dir)
+            except Exception as e:
+                raise RuntimeError(f"Failed to load model from {model_with_structure_dir}:{e}")
         else:
-            model = DependencyAnalyzer(match_tokenizer=tokenizer)
-            model.load_state_dict(
-                torch.load(
-                    os.path.join(
-                        model_dir,
-                        'pytorch_model.bin')))
+            try:
+                model = DependencyAnalyzer(match_tokenizer=tokenizer)
+                model.load_state_dict(
+                    torch.load(
+                        os.path.join(
+                            model_dir,
+                            'pytorch_model.bin'), map_location=torch.device('cpu')))
+            except Exception as e:
+                raise RuntimeError(f"Failed to load model state from {model_dir}: {e}")
         return model, tokenizer
 
     model = EncoderDecoderModel.from_pretrained(model_dir)
@@ -96,6 +101,10 @@ class DependencyClassifier:
         self.model.to(self.device)
 
     def construct_pair(self, code_1: str, code_2: str):
+        if not isinstance(code_1, str) or not isinstance(code_2, str):
+            raise ValueError("Both code_1 and code_2 must be strings.")
+        if not code_1 or not code_2:
+            raise ValueError("Both code_1 and code_2 must not be empty.")
         return '<from>' + code_1 + '<to>' + code_2
 
     def construct_corpus_pair(self, corpus: list[tuple[str, str]]):
@@ -103,7 +112,9 @@ class DependencyClassifier:
                 for code_1, code_2 in corpus]
 
     def gen(self, text: str):
-        sigmoid = nn.Sigmoid()
+        if not isinstance(text, str):
+            raise ValueError("Input text must be a string.")
+        text = text.strip() # 去除首尾空白字符
         # ATTENTION: converted to batch here
         token_input = self.tokenizer(text, return_tensors='pt')
         if torch.cuda.is_available():
