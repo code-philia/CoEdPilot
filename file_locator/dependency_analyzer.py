@@ -14,6 +14,7 @@ from transformers import PreTrainedModel
 from transformers import RobertaTokenizerFast
 from typing import Union
 
+
 class DependencyAnalyzer(nn.Module, PyTorchModelHubMixin):
     def __init__(self, encoder: Union[PreTrainedModel, None] = None,
                  match_tokenizer: Union[RobertaTokenizerFast, None] = None,
@@ -21,7 +22,8 @@ class DependencyAnalyzer(nn.Module, PyTorchModelHubMixin):
                  output_features: int = 2):
         super(DependencyAnalyzer, self).__init__()
         if not encoder:
-            encoder: PreTrainedModel = EncoderDecoderModel.from_encoder_decoder_pretrained("microsoft/codebert-base", "microsoft/codebert-base").encoder
+            encoder: PreTrainedModel = EncoderDecoderModel.from_encoder_decoder_pretrained(
+                "microsoft/codebert-base", "microsoft/codebert-base").encoder
         if match_tokenizer:
             encoder.resize_token_embeddings(len(match_tokenizer))
             encoder.config.decoder_start_token_id = match_tokenizer.cls_token_id
@@ -32,15 +34,18 @@ class DependencyAnalyzer(nn.Module, PyTorchModelHubMixin):
         self.dense = nn.Linear(input_features, output_features)
 
     def forward(self, input_ids, attention_mask):
-        outputs = self.encoder(input_ids = input_ids, attention_mask = attention_mask)
+        outputs = self.encoder(
+            input_ids=input_ids,
+            attention_mask=attention_mask)
         pooler_output = outputs.pooler_output
         output_2d = self.dense(pooler_output)
         return output_2d
 
     
+
 def load_model_and_tokenizer(model_dir: str,
-                             directly_load:bool = True,
-                             model_with_structure_dir:str|None = None)->tuple[DependencyAnalyzer, RobertaTokenizerFast]:
+                             directly_load: bool = True,
+                             model_with_structure_dir: str | None = None) -> tuple[DependencyAnalyzer, RobertaTokenizerFast]:
     if directly_load:
         # 增强模型和分词器加载时的异常
         try:
@@ -48,16 +53,15 @@ def load_model_and_tokenizer(model_dir: str,
         except Exception as e:
             raise RuntimeError(f"Failed to load tokenizer from {model_dir}:{e}")
         if model_with_structure_dir:
-            try:
-                model = DependencyAnalyzer.from_pretrained(model_with_structure_dir)
-            except Exception as e:
-                raise RuntimeError(f"Failed to load model from {model_with_structure_dir}:{e}")
+            model = DependencyAnalyzer.from_pretrained(
+                model_with_structure_dir)
         else:
-            try:
-                model = DependencyAnalyzer(match_tokenizer=tokenizer)
-                model.load_state_dict(torch.load(os.path.join(model_dir,'pytorch_model.bin'), map_location=torch.device('cpu')))
-            except Exception as e:
-                raise RuntimeError(f"Failed to load model state from {model_dir}: {e}")
+            model = DependencyAnalyzer(match_tokenizer=tokenizer)
+            model.load_state_dict(
+                torch.load(
+                    os.path.join(
+                        model_dir,
+                        'pytorch_model.bin')))
         return model, tokenizer
 
     model = EncoderDecoderModel.from_pretrained(model_dir)
@@ -67,12 +71,13 @@ def load_model_and_tokenizer(model_dir: str,
     if not isinstance(model, PreTrainedModel):
         raise RuntimeError(f"Encoder of original model is not valid")
 
-    tokenizer: RobertaTokenizerFast = RobertaTokenizerFast.from_pretrained("microsoft/codebert-base")
+    tokenizer: RobertaTokenizerFast = RobertaTokenizerFast.from_pretrained(
+        "microsoft/codebert-base")
     if not isinstance(tokenizer, RobertaTokenizerFast):
         raise RuntimeError("Cannot read tokenizer as microsoft/codebert-base")
     special_tokens = ['<from>', '<to>']
     # tokenizer.add_tokens(my_tokens, special_tokens = False)
-    tokenizer.add_tokens(special_tokens, special_tokens = True)
+    tokenizer.add_tokens(special_tokens, special_tokens=True)
 
     model = DependencyAnalyzer(model, tokenizer)
 
@@ -81,9 +86,9 @@ def load_model_and_tokenizer(model_dir: str,
 
 class DependencyClassifier:
     def __init__(self,
-                 load_dir:str="../dependency_analyzer/model",
-                 load_with_model_struture:bool=False,
-                 device:torch.device=torch.device("cuda", index=0)):
+                 load_dir: str = "../dependency_analyzer/model",
+                 load_with_model_struture: bool = False,
+                 device: torch.device = torch.device("cuda", index=0)):
         self.model, self.tokenizer = load_model_and_tokenizer(load_dir, model_with_structure_dir=load_dir) \
             if load_with_model_struture \
             else load_model_and_tokenizer(load_dir)
@@ -91,45 +96,51 @@ class DependencyClassifier:
         self.model.to(self.device)
 
     def construct_pair(self, code_1: str, code_2: str):
-        if not isinstance(code_1, str) or not isinstance(code_2, str):
-            raise ValueError("Both code_1 and code_2 must be strings.")
-        if not code_1 or not code_2:
-            raise '<from>' + code_1 + '<to>' + code_2 
-    
+        return '<from>' + code_1 + '<to>' + code_2
+
     def construct_corpus_pair(self, corpus: list[tuple[str, str]]):
-        return [self.construct_pair(code_1, code_2) for code_1, code_2 in corpus]
+        return [self.construct_pair(code_1, code_2)
+                for code_1, code_2 in corpus]
 
     def gen(self, text: str):
-        if not isinstance(text, str):
-            raise ValueError("Input text must be a string.")
-        text = text.strip() # 去除首尾空白字符
+        sigmoid = nn.Sigmoid()
+        # ATTENTION: converted to batch here
         token_input = self.tokenizer(text, return_tensors='pt')
-
         if torch.cuda.is_available():
             token_input = token_input.to(self.device)
 
         with torch.no_grad():
-            outputs = self.model(               
-                input_ids = token_input['input_ids'],
-                attention_mask = token_input['attention_mask']
-                )[0]
-        outputs = torch.sigmoid(outputs).detach().cpu()
+            outputs = self.model(
+                input_ids=token_input['input_ids'],
+                attention_mask=token_input['attention_mask']
+            )[0]
+        outputs = sigmoid(outputs).detach().cpu()
         return outputs[1]
-    
+
     def batch_gen(self, corpus_pair: list[str]):
         sigmoid = nn.Sigmoid()
-        token_input = self.tokenizer(corpus_pair, return_tensors='pt', padding=True, truncation=True, max_length=512)
-        dataset = TensorDataset(token_input["input_ids"], token_input["attention_mask"])
-        dataloader = DataLoader(dataset, batch_size = 32, shuffle = False)
-        
+        token_input = self.tokenizer(
+            corpus_pair,
+            return_tensors='pt',
+            padding=True,
+            truncation=True,
+            max_length=512)
+        dataset = TensorDataset(
+            token_input["input_ids"],
+            token_input["attention_mask"])
+        dataloader = DataLoader(dataset, batch_size=32, shuffle=False)
+
         preds = []
         with torch.no_grad():
             for batch in dataloader:
-                batch_input, attention_mask = [item.to(self.device) for item in batch]
-                outputs = self.model(input_ids=batch_input, attention_mask=attention_mask)
-                outputs = sigmoid(outputs)[:,1]
+                batch_input, attention_mask = [
+                    item.to(self.device) for item in batch]
+                outputs = self.model(
+                    input_ids=batch_input,
+                    attention_mask=attention_mask)
+                outputs = sigmoid(outputs)[:, 1]
                 preds.append(outputs.detach().cpu())
-        preds = torch.cat(preds, dim = 0)
+        preds = torch.cat(preds, dim=0)
         return preds.numpy()
 
 
@@ -155,4 +166,5 @@ def cal_dep_score(hunk: dict, file_content: str, dependency_analyzer: Dependency
     dep_score_min = np.min(results).item()
     dep_score_median = np.median(results).item()
     dep_score_std = np.std(results).item()
-    return [dep_score_max, dep_score_mean, dep_score_min, dep_score_median, dep_score_std]
+    return [dep_score_max, dep_score_mean,
+            dep_score_min, dep_score_median, dep_score_std]
