@@ -58,7 +58,8 @@ def train_embedding_model(
                     hidden_states = model(
                         input_ids_in_batch, attn_masks_in_batch
                     ).last_hidden_state
-                    embeddings = torch.mean(hidden_states, dim=1)  # Average pooling
+                    embeddings = torch.mean(
+                        hidden_states, dim=1)  # Average pooling
                     all_embeddings.append(embeddings)
 
                 embeddings = torch.cat(all_embeddings, dim=0)
@@ -66,7 +67,8 @@ def train_embedding_model(
                 file_embeddings = embeddings[1:]
 
                 # calculate similarity
-                similarity = F.cosine_similarity(edit_embedding, file_embeddings, dim=1)
+                similarity = F.cosine_similarity(
+                    edit_embedding, file_embeddings, dim=1)
 
                 # find file_embedding with max similarity
                 max_similarity_idx = torch.argmax(similarity)
@@ -113,7 +115,8 @@ def train_embedding_model(
 
             # contrastive loss between edit_embedding and
             # max_similiarity_embedding
-            loss = criterion(edit_embedding, max_similiarity_embedding, label.squeeze(1))
+            loss = criterion(
+                edit_embedding, max_similiarity_embedding, label.squeeze(1))
 
             # backprop
             optimizer.zero_grad()
@@ -137,9 +140,9 @@ def load_siamese_data(
         windows = []
         for i in range(len(lines) // window_len + 1):
             if i == len(lines) // window_len:
-                window = "".join(lines[i * window_len :])
+                window = "".join(lines[i * window_len:])
             else:
-                window = "".join(lines[i * window_len : (i + 1) * window_len])
+                window = "".join(lines[i * window_len: (i + 1) * window_len])
             windows.append(window)
         return windows
 
@@ -201,7 +204,8 @@ def evaluate_embedding_model(
         file_embeddings = all_embeddings[1:]
 
         # calculate similarity
-        similarity = F.cosine_similarity(edit_embedding, file_embeddings, dim=1)
+        similarity = F.cosine_similarity(
+            edit_embedding, file_embeddings, dim=1)
 
         # get max similiarity as prediction
         preds.append(torch.max(similarity).detach().cpu().numpy())
