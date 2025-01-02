@@ -37,7 +37,8 @@ class DependencyAnalyzer(nn.Module, PyTorchModelHubMixin):
         self.dense = nn.Linear(768, 2)
 
     def forward(self, input_ids, attention_mask):
-        outputs = self.encoder(input_ids=input_ids, attention_mask=attention_mask)
+        outputs = self.encoder(input_ids=input_ids,
+                               attention_mask=attention_mask)
         pooler_output = outputs.pooler_output
         output_2d = self.dense(pooler_output)
         return output_2d
@@ -49,10 +50,12 @@ def load_model_and_tokenizer(
     if directly_load:
         tokenizer = RobertaTokenizerFast.from_pretrained(model_dir)
         if model_with_structure_dir:
-            model = DependencyAnalyzer.from_pretrained(model_with_structure_dir)
+            model = DependencyAnalyzer.from_pretrained(
+                model_with_structure_dir)
         else:
             model = DependencyAnalyzer(match_tokenizer=tokenizer)
-            model.load_state_dict(torch.load(os.path.join(model_dir, 'pytorch_model.bin')))
+            model.load_state_dict(torch.load(
+                os.path.join(model_dir, 'pytorch_model.bin')))
         return model, tokenizer
 
     model = EncoderDecoderModel.from_pretrained(model_dir)
@@ -84,7 +87,8 @@ class DependencyClassifier:
         device: torch.device = torch.device('cuda', index=0),
     ):
         self.model, self.tokenizer = (
-            load_model_and_tokenizer(load_dir, model_with_structure_dir=load_dir)
+            load_model_and_tokenizer(
+                load_dir, model_with_structure_dir=load_dir)
             if load_with_model_struture
             else load_model_and_tokenizer(load_dir)
         )
@@ -117,14 +121,17 @@ class DependencyClassifier:
         token_input = self.tokenizer(
             corpus_pair, return_tensors='pt', padding=True, truncation=True, max_length=512,
         )
-        dataset = TensorDataset(token_input['input_ids'], token_input['attention_mask'])
+        dataset = TensorDataset(
+            token_input['input_ids'], token_input['attention_mask'])
         dataloader = DataLoader(dataset, batch_size=32, shuffle=False)
 
         preds = []
         with torch.no_grad():
             for batch in dataloader:
-                batch_input, attention_mask = [item.to(self.device) for item in batch]
-                outputs = self.model(input_ids=batch_input, attention_mask=attention_mask)
+                batch_input, attention_mask = [
+                    item.to(self.device) for item in batch]
+                outputs = self.model(input_ids=batch_input,
+                                     attention_mask=attention_mask)
                 outputs = sigmoid(outputs)[:, 1]
                 preds.append(outputs.detach().cpu())
         preds = torch.cat(preds, dim=0)
@@ -136,9 +143,9 @@ def cal_dep_score(hunk: dict, file_content: str, dependency_analyzer: Dependency
         windows = []
         for i in range(len(lines) // 10 + 1):
             if i == len(lines) // 10:
-                window = "".join(lines[i * 10 :])
+                window = "".join(lines[i * 10:])
             else:
-                window = "".join(lines[i * 10 : (i + 1) * 10])
+                window = "".join(lines[i * 10: (i + 1) * 10])
             windows.append(window)
         return windows
 

@@ -8,9 +8,11 @@ from sklearn.metrics import (
     confusion_matrix,
 )
 
-def calc_em_acc(predictions:List[str], ground_truth:List[str]) -> Tuple[float, float]:
+
+def calc_em_acc(predictions: List[str], ground_truth: List[str]) -> Tuple[float, float]:
     """Calculate em and accuracy between predictions and ground truth."""
-    assert len(predictions) == len(ground_truth), "The length of predictions and ground truth must be the same."
+    assert len(predictions) == len(
+        ground_truth), "The length of predictions and ground truth must be the same."
 
     em = 0
     total_label = 0
@@ -30,6 +32,7 @@ def calc_em_acc(predictions:List[str], ground_truth:List[str]) -> Tuple[float, f
     acc = match_label / total_label
     return em, acc
 
+
 def calc_precision_recall_f1(predictions: List[str], ground_truth: List[str]) -> Tuple[float, float, float]:
     """Calculate precision, recall and f1 score between predictions and ground truth."""
     y_pred = []
@@ -47,6 +50,7 @@ def calc_precision_recall_f1(predictions: List[str], ground_truth: List[str]) ->
     f1 = f1_score(y_true, y_pred, average='macro')
     return precision, recall, f1
 
+
 def all_in_one(output: str, gold: str) -> None:
     # load from files
     with open(output, 'r') as f:
@@ -55,7 +59,8 @@ def all_in_one(output: str, gold: str) -> None:
         ground_truth = f.readlines()
 
     # same line number:
-    assert len(predictions) == len(ground_truth), "The length of predictions and ground truth must be the same."
+    assert len(predictions) == len(
+        ground_truth), "The length of predictions and ground truth must be the same."
 
     em, acc = calc_em_acc(predictions, ground_truth)
     print(f'EM: {em * 100:.2f}%')
