@@ -3,9 +3,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   autopep8:
@@ -31,16 +28,18 @@ jobs:
       - name: Run autopep8 to fix PEP 8 issues
         run: |
           autopep8 --in-place --aggressive --recursive .
-
+          
+      # Check if any files have changed after running autopep8
       - name: Check for changes
+        id: check_changes
         run: |
-          git diff --exit-code
-
-          - name: Commit and push changes
-          run: |
-            git config --global user.name "talented-watermelon"
-            git config --global user.email "1980207347@qq.com"
-            git add .
-            git commit -m "Fix PEP 8 issues"
-            git push
-        if: ${{ success() }}
+          git diff --exit-code || echo "Changes detected"
+      
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config --global user.name "talented-watermelon"
+          git config --global user.email "1980207347@qq.com"
+          git add .
+          git commit -m "Fix PEP 8 issues"
+          git push
