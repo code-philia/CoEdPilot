@@ -2,6 +2,7 @@
 import os
 
 # Third-party imports
+import concurrent.futures
 from huggingface_hub import PyTorchModelHubMixin
 import numpy as np
 import torch
@@ -19,6 +20,8 @@ class DependencyAnalyzer(nn.Module, PyTorchModelHubMixin):
         self,
         encoder: Union[PreTrainedModel, None] = None,
         match_tokenizer: Union[RobertaTokenizerFast, None] = None,
+        input_features: int = 768,
+        output_features: int = 2,
     ):
         super(DependencyAnalyzer, self).__init__()
         if not encoder:
@@ -34,7 +37,7 @@ class DependencyAnalyzer(nn.Module, PyTorchModelHubMixin):
             encoder.config.eos_token_id = match_tokenizer.sep_token_id
             encoder.config.vocab_size = match_tokenizer.vocab_size
         self.encoder = encoder
-        self.dense = nn.Linear(768, 2)
+        self.dense = nn.Linear(input_features, output_features)
 
     def forward(self, input_ids, attention_mask):
         outputs = self.encoder(input_ids=input_ids, attention_mask=attention_mask)
@@ -47,7 +50,11 @@ def load_model_and_tokenizer(
     model_dir: str, directly_load: bool = True, model_with_structure_dir: str | None = None,
 ) -> tuple[DependencyAnalyzer, RobertaTokenizerFast]:
     if directly_load:
-        tokenizer = RobertaTokenizerFast.from_pretrained(model_dir)
+        # 增强模型和分词器加载时的异常处理
+        try:
+            tokenizer = RobertaTokenizerFast.from_pretrained(model_dir)
+        except Exception as e:
+            raise RuntimeError(f'Failed to load tokenizer from {model_dir}:{e}')
         if model_with_structure_dir:
             model = DependencyAnalyzer.from_pretrained(model_with_structure_dir)
         else:
@@ -92,13 +99,19 @@ class DependencyClassifier:
         self.model.to(self.device)
 
     def construct_pair(self, code_1: str, code_2: str):
+        if not isinstance(code_1, str) or not isinstance(code_2, str):
+            raise ValueError('Both code_1 and code_2 must be strings.')
+        if not code_1 or not code_2:
+            raise ValueError('Both code_1 and code_2 must not be empty.')
         return '<from>' + code_1 + '<to>' + code_2
 
     def construct_corpus_pair(self, corpus: list[tuple[str, str]]):
         return [self.construct_pair(code_1, code_2) for code_1, code_2 in corpus]
 
     def gen(self, text: str):
-        sigmoid = nn.Sigmoid()
+        if not isinstance(text, str):
+            raise ValueError('Input text must be a string.')
+        text = text.strip()  # 去除首尾空白字符
         # ATTENTION: converted to batch here
         token_input = self.tokenizer(text, return_tensors='pt')
         if torch.cuda.is_available():
@@ -109,7 +122,7 @@ class DependencyClassifier:
                 input_ids=token_input['input_ids'],
                 attention_mask=token_input['attention_mask'],
             )[0]
-        outputs = sigmoid(outputs).detach().cpu()
+        outputs = torch.sigmoid(outputs).detach().cpu()
         return outputs[1]
 
     def batch_gen(self, corpus_pair: list[str]):
@@ -147,15 +160,13 @@ def cal_dep_score(hunk: dict, file_content: str, dependency_analyzer: Dependency
     hunk_window_str = "".join(hunk['code_window'])
     code_window_strsB = split2window_str(fileB_lines)
     if len(code_window_strsB) == 0:
-        print('failed to split fileB into windows')
         raise KeyError('failed to split fileB into windows')
     # form code windows pairs
-    code_window_pairs = []
-    for windowB in code_window_strsB:
-        code_window_pairs.append((hunk_window_str, windowB))
+    code_window_pairs = [(hunk_window_str, windowB) for windowB in code_window_strsB]
     corpus_pair = dependency_analyzer.construct_corpus_pair(code_window_pairs)
-    results = dependency_analyzer.batch_gen(corpus_pair)
-    assert len(results) == len(code_window_strsB)
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        results = list(executor.map(dependency_analyzer.gen, corpus_pair))
     # get dep score
     dep_score_max = np.max(results).item()
     dep_score_mean = np.mean(results).item()
