@@ -89,8 +89,10 @@ def convert_examples_to_features(examples, tokenizer, args, stage=None):
     features = []
     for example_index, example in enumerate(tqdm(examples)):
         # source
-        source_tokens = tokenizer.tokenize(example.source)[: args.max_source_length - 2]
-        source_tokens = [tokenizer.cls_token] + source_tokens + [tokenizer.sep_token]
+        source_tokens = tokenizer.tokenize(example.source)[
+            : args.max_source_length - 2]
+        source_tokens = [tokenizer.cls_token] + \
+            source_tokens + [tokenizer.sep_token]
         source_ids = tokenizer.convert_tokens_to_ids(source_tokens)
         original_source_len = len(source_ids)
         source_mask = [1] * len(source_tokens)
@@ -99,7 +101,8 @@ def convert_examples_to_features(examples, tokenizer, args, stage=None):
         source_mask += [0] * padding_length
 
         # target
-        target_tokens = tokenizer.tokenize(example.source)[: args.max_target_length - 2]
+        target_tokens = tokenizer.tokenize(example.source)[
+            : args.max_target_length - 2]
         label_idx = 0
         # replace mask token with label token
         for i in range(len(target_tokens)):
@@ -107,7 +110,8 @@ def convert_examples_to_features(examples, tokenizer, args, stage=None):
                 target_tokens[i] = example.target[label_idx]
                 label_idx += 1
 
-        target_tokens = [tokenizer.cls_token] + target_tokens + [tokenizer.sep_token]
+        target_tokens = [tokenizer.cls_token] + \
+            target_tokens + [tokenizer.sep_token]
         target_ids = tokenizer.convert_tokens_to_ids(target_tokens)
         original_target_len = len(target_ids)
         target_mask = [1] * len(target_ids)
@@ -132,19 +136,24 @@ def convert_examples_to_features(examples, tokenizer, args, stage=None):
                         [x.replace('\u0120', '_') for x in source_tokens]
                     )
                 )
-                logger.info('source_ids: {}'.format(' '.join(map(str, source_ids))))
-                logger.info('source_mask: {}'.format(' '.join(map(str, source_mask))))
+                logger.info('source_ids: {}'.format(
+                    ' '.join(map(str, source_ids))))
+                logger.info('source_mask: {}'.format(
+                    ' '.join(map(str, source_mask))))
 
                 logger.info(
                     'target_tokens: {}'.format(
                         [x.replace('\u0120', '_') for x in target_tokens]
                     )
                 )
-                logger.info('target_ids: {}'.format(' '.join(map(str, target_ids))))
-                logger.info('target_mask: {}'.format(' '.join(map(str, target_mask))))
+                logger.info('target_ids: {}'.format(
+                    ' '.join(map(str, target_ids))))
+                logger.info('target_mask: {}'.format(
+                    ' '.join(map(str, target_mask))))
 
         features.append(
-            InputFeatures(example_index, source_ids, target_ids, source_mask, target_mask,)
+            InputFeatures(example_index, source_ids,
+                          target_ids, source_mask, target_mask,)
         )
     return features
 
@@ -232,7 +241,8 @@ def main():
         'than this will be truncated, sequences shorter will be padded.',
     )
 
-    parser.add_argument('--do_train', action='store_true', help='Whether to run training.')
+    parser.add_argument('--do_train', action='store_true',
+                        help='Whether to run training.')
     parser.add_argument(
         '--do_eval', action='store_true', help='Whether to run eval on the dev set.'
     )
@@ -269,14 +279,16 @@ def main():
         type=float,
         help='The initial learning rate for Adam.',
     )
-    parser.add_argument('--beam_size', default=10, type=int, help='beam size for beam search')
+    parser.add_argument('--beam_size', default=10, type=int,
+                        help='beam size for beam search')
     parser.add_argument(
         '--weight_decay', default=0.0, type=float, help='Weight decay if we apply some.'
     )
     parser.add_argument(
         '--adam_epsilon', default=1e-8, type=float, help='Epsilon for Adam optimizer.'
     )
-    parser.add_argument('--max_grad_norm', default=1.0, type=float, help='Max gradient norm.')
+    parser.add_argument('--max_grad_norm', default=1.0,
+                        type=float, help='Max gradient norm.')
     parser.add_argument(
         '--num_train_epochs',
         default=3,
@@ -297,7 +309,8 @@ def main():
     parser.add_argument(
         '--local_rank', type=int, default=-1, help='For distributed training: local_rank',
     )
-    parser.add_argument('--seed', type=int, default=42, help='random seed for initialization')
+    parser.add_argument('--seed', type=int, default=42,
+                        help='random seed for initialization')
 
     # Parse arguments
     args = parser.parse_args()
@@ -340,7 +353,8 @@ def main():
     )
 
     # Build model
-    encoder = model_class.from_pretrained(args.model_name_or_path, config=config)
+    encoder = model_class.from_pretrained(
+        args.model_name_or_path, config=config)
     model = Seq2Seq(
         encoder=encoder,
         config=config,
@@ -371,11 +385,13 @@ def main():
         train_features = convert_examples_to_features(
             train_examples, tokenizer, args, stage='train'
         )
-        all_source_ids = torch.tensor([f.source_ids for f in train_features], dtype=torch.long)
+        all_source_ids = torch.tensor(
+            [f.source_ids for f in train_features], dtype=torch.long)
         all_source_mask = torch.tensor(
             [f.source_mask for f in train_features], dtype=torch.long
         )
-        all_target_ids = torch.tensor([f.target_ids for f in train_features], dtype=torch.long)
+        all_target_ids = torch.tensor(
+            [f.target_ids for f in train_features], dtype=torch.long)
         all_target_mask = torch.tensor(
             [f.target_mask for f in train_features], dtype=torch.long
         )
@@ -413,7 +429,8 @@ def main():
             },
         ]
         t_total = (
-            len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs
+            len(train_dataloader) // args.gradient_accumulation_steps *
+            args.num_train_epochs
         )
         optimizer = AdamW(
             optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon
@@ -455,9 +472,11 @@ def main():
                     loss = loss / args.gradient_accumulation_steps
                 tr_loss += loss.item()
                 train_loss = round(
-                    tr_loss * args.gradient_accumulation_steps / (nb_tr_steps + 1), 4
+                    tr_loss * args.gradient_accumulation_steps /
+                    (nb_tr_steps + 1), 4
                 )
-                bar.set_description('epoch {} loss {}'.format(epoch, train_loss))
+                bar.set_description(
+                    'epoch {} loss {}'.format(epoch, train_loss))
                 nb_tr_examples += source_ids.size(0)
                 nb_tr_steps += 1
                 loss.backward()
@@ -531,32 +550,37 @@ def main():
                     logger.info('  %s = %s', key, str(result[key]))
                 logger.info('  ' + '*' * 20)
 
-                last_output_dir = os.path.join(args.output_dir, 'checkpoint-last')
+                last_output_dir = os.path.join(
+                    args.output_dir, 'checkpoint-last')
                 if not os.path.exists(last_output_dir):
                     os.makedirs(last_output_dir)
                 model_to_save = (
                     model.module if hasattr(model, 'module') else model
                 )  # Only save the model it-self
-                output_model_file = os.path.join(last_output_dir, 'pytorch_model.bin')
+                output_model_file = os.path.join(
+                    last_output_dir, 'pytorch_model.bin')
                 torch.save(model_to_save.state_dict(), output_model_file)
                 if eval_loss < best_loss:
                     logger.info('  Best ppl:%s', round(np.exp(eval_loss), 5))
                     logger.info('  ' + '*' * 20)
                     best_loss = eval_loss
-                    output_dir = os.path.join(args.output_dir, 'checkpoint-best-ppl')
+                    output_dir = os.path.join(
+                        args.output_dir, 'checkpoint-best-ppl')
                     if not os.path.exists(output_dir):
                         os.makedirs(output_dir)
                     model_to_save = (
                         model.module if hasattr(model, 'module') else model
                     )  # Only save the model it-self
-                    output_model_file = os.path.join(output_dir, 'pytorch_model.bin')
+                    output_model_file = os.path.join(
+                        output_dir, 'pytorch_model.bin')
                     torch.save(model_to_save.state_dict(), output_model_file)
 
                 if 'dev_bleu' in dev_dataset:
                     eval_examples, eval_data = dev_dataset['dev_bleu']
                 else:
                     eval_examples = read_examples(args.dev_filename)
-                    eval_examples = random.sample(eval_examples, min(1000, len(eval_examples)))
+                    eval_examples = random.sample(
+                        eval_examples, min(1000, len(eval_examples)))
                     eval_features = convert_examples_to_features(
                         eval_examples, tokenizer, args, stage='test'
                     )
@@ -601,10 +625,12 @@ def main():
                             train=False,
                         ).to('cpu')
                         # extract masked edit operations
-                        for i in range(lm_logits.shape[0]):  # for sample within batch
+                        # for sample within batch
+                        for i in range(lm_logits.shape[0]):
                             output = []
                             gt = []
-                            for j in range(lm_logits.shape[1]):  # for every token
+                            # for every token
+                            for j in range(lm_logits.shape[1]):
                                 if source_ids[i][j] == tokenizer.mask_token_id:  # if is masked
                                     output.append(
                                         tokenizer.decode(
@@ -633,7 +659,8 @@ def main():
                 (goldMap, predictionMap) = bleu.computeMaps(
                     predictions, os.path.join(args.output_dir, 'dev.gold')
                 )
-                dev_bleu = round(bleu.bleuFromMaps(goldMap, predictionMap)[0], 2)
+                dev_bleu = round(bleu.bleuFromMaps(
+                    goldMap, predictionMap)[0], 2)
                 logger.info('  %s = %s ' % ('bleu-4', str(dev_bleu)))
                 logger.info('  ' + '*' * 20)
                 if dev_bleu > best_bleu:
@@ -641,13 +668,15 @@ def main():
                     logger.info('  ' + '*' * 20)
                     best_bleu = dev_bleu
                     # Save best checkpoint for best bleu
-                    output_dir = os.path.join(args.output_dir, 'checkpoint-best-bleu')
+                    output_dir = os.path.join(
+                        args.output_dir, 'checkpoint-best-bleu')
                     if not os.path.exists(output_dir):
                         os.makedirs(output_dir)
                     model_to_save = (
                         model.module if hasattr(model, 'module') else model
                     )  # Only save the model it-self
-                    output_model_file = os.path.join(output_dir, 'pytorch_model.bin')
+                    output_model_file = os.path.join(
+                        output_dir, 'pytorch_model.bin')
                     torch.save(model_to_save.state_dict(), output_model_file)
 
     if args.do_test:
@@ -702,7 +731,8 @@ def main():
                         train=False,
                     ).to('cpu')
                     # extract masked edit operations
-                    for i in range(lm_logits.shape[0]):  # for sample within batch
+                    # for sample within batch
+                    for i in range(lm_logits.shape[0]):
                         output = []
                         gt = []
                         for j in range(lm_logits.shape[1]):  # for every token
@@ -723,9 +753,11 @@ def main():
             model.train()
             predictions = []
             with open(
-                os.path.join(args.output_dir, 'test_{}.output'.format(str(idx))), 'w'
+                os.path.join(args.output_dir,
+                             'test_{}.output'.format(str(idx))), 'w'
             ) as f, open(
-                os.path.join(args.output_dir, 'test_{}.gold'.format(str(idx))), 'w'
+                os.path.join(args.output_dir,
+                             'test_{}.gold'.format(str(idx))), 'w'
             ) as f1:
                 for i, (ref, gold) in enumerate(zip(outputs, gts)):
                     predictions.append(str(i) + '\t' + ref)
@@ -733,7 +765,8 @@ def main():
                     f1.write(str(i) + '\t' + gold + '\n')
 
             (goldMap, predictionMap) = bleu.computeMaps(
-                predictions, os.path.join(args.output_dir, 'test_{}.gold'.format(str(idx))),
+                predictions, os.path.join(
+                    args.output_dir, 'test_{}.gold'.format(str(idx))),
             )
             dev_bleu = round(bleu.bleuFromMaps(goldMap, predictionMap)[0], 2)
             logger.info('  %s = %s ' % ('bleu-4', str(dev_bleu)))
