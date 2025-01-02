@@ -15,8 +15,7 @@ def all_in_one(output):
     for key, sample in test_set.items():
         predictions, ground_truth = sample[0], sample[1]
         for idx, prediction in enumerate(predictions):
-            if prediction.split(
-                    '\t')[-1].strip() == ground_truth.split('\t')[-1].strip():
+            if prediction.split('\t')[-1].strip() == ground_truth.split('\t')[-1].strip():
                 if idx < 1:
                     em_1 += 1
                     em_3 += 1
