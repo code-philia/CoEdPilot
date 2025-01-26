@@ -2,9 +2,11 @@
 
 ## Description
 
-This repository contains the source code and supporting materials for the paper "*CoEdPilot: Recommending Code Edits with Learned Prior Edit Relevance, Project-wise Awareness, and Interactive Nature*" by Chenyan Liu, Yufan Cai, Yun Lin, Yuhuan Huang, Yunrui Pei, Bo Jiang, Ping Yang, Jin Song Dong, and Hong Mei. Presented at ISSTA'24. 
+This repository contains the training and evaluation code for the paper "*CoEdPilot: Recommending Code Edits with Learned Prior Edit Relevance, Project-wise Awareness, and Interactive Nature*" by Chenyan Liu, Yufan Cai, Yun Lin, Yuhuan Huang, Yunrui Pei, Bo Jiang, Ping Yang, Jin Song Dong, and Hong Mei. Presented at ISSTA'24. 
 
-## Demo
+For proposed VS Code extension, please refer to [CoEdPilot-VSCode](https://github.com/code-philia/CoEdPilot-extension), with detailed deployment instructions.
+
+## 🎥 Demo
 > [!NOTE]
 > Please click the image to watch the demo video on YouTube.
 <div align="center">
@@ -13,7 +15,13 @@ This repository contains the source code and supporting materials for the paper 
    </a>
 </div>
 
-## Contents
+## 🔥 Try CoEdPilot Extension
+* Please refer to the [CoEdPilot-VSCode](https://github.com/code-philia/CoEdPilot-extension) repository to deploy your own CoEdPilot assistant as VS Code extension.
+* All backend models are available in HuggingFace, as detailed in the [CoEdPilot-VSCode](https://github.com/code-philia/CoEdPilot-extension) repository.
+* Backend models can be deployed on localhost, remote server and via docker.
+* 💬 If you have any questions or feedback, please reach out to us via GitHub Issues.
+
+## 📂 Contents
 > More detailed READMEs are available in each subdirectory.
 
 - `/dependency_analyzer`: The inference script and pre-trained model for the dependency analyzer.
@@ -21,7 +29,7 @@ This repository contains the source code and supporting materials for the paper 
 - `/line_locator`: The training and inference script for line-locator.
 - `/generator`: The training and inference script for edit-generator.
 
-## Getting Started
+## 🚀 Getting Started
 
 Our model scripts require **Python 3.10** and **Pytorch with CUDA.**  
 
