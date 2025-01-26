@@ -9,13 +9,8 @@ from sklearn.metrics import (
 )
 
 
-def all_in_one(output, gold):
-    with open(output, 'r') as f:
-        predictions = f.readlines()
-    with open(gold, 'r') as f:
-        ground_truth = f.readlines()
-
-    # same line number:
+def calc_em_acc(predictions: List[str], ground_truth: List[str]) -> Tuple[float, float]:
+    """Calculate em and accuracy between predictions and ground truth."""
     assert len(predictions) == len(
         ground_truth
     ), 'The length of predictions and ground truth must be the same.'
