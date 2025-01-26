@@ -17,12 +17,12 @@ score_set(s, testid, refids, n=4): Interface with dataset.py; calculate BLEU sco
 The reason for breaking the BLEU computation into three phases cook_refs(), cook_test(), and score_cooked() is to allow the caller to calculate BLEU scores for multiple test sets as efficiently as possible.
 """
 
-import re
 import xml.sax.saxutils
+import re
 import os
 import sys
-import subprocess
 import math
+import subprocess
 
 # Added to bypass NIST-style pre-processing of hyp and ref files -- wade
 nonorm = 0
