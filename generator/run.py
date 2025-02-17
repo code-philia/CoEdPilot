@@ -72,7 +72,8 @@ def read_examples(filename):
             num_mask = code.count('<mask>')
             if num_mask != len(label_window):
                 continue
-            examples.append(Example(idx=idx, source=code, target=nl, edit_ops=label_window))
+            examples.append(Example(idx=idx, source=code,
+                            target=nl, edit_ops=label_window))
     return examples
 
 
@@ -97,7 +98,8 @@ def convert_examples_to_features(examples, tokenizer, args, stage=None):
         # source
         # 1. encode the source code
         example_source = example.source
-        source_tokens = tokenizer.tokenize(example_source)[: args.max_source_length - 2]
+        source_tokens = tokenizer.tokenize(example_source)[
+            : args.max_source_length - 2]
 
         # 2. replace mask token with edit operation token
         # doing this is because sometimes the tokenizer will not split the edit
@@ -109,7 +111,8 @@ def convert_examples_to_features(examples, tokenizer, args, stage=None):
                 edit_op_idx += 1
 
         # the reset is the same as original code
-        source_tokens = [tokenizer.cls_token] + source_tokens + [tokenizer.sep_token]
+        source_tokens = [tokenizer.cls_token] + \
+            source_tokens + [tokenizer.sep_token]
         source_ids = tokenizer.convert_tokens_to_ids(source_tokens)
         source_mask = [1] * (len(source_tokens))
         padding_length = args.max_source_length - len(source_ids)
@@ -120,8 +123,10 @@ def convert_examples_to_features(examples, tokenizer, args, stage=None):
         if stage == 'test':
             target_tokens = tokenizer.tokenize('None')
         else:
-            target_tokens = tokenizer.tokenize(example.target)[: args.max_target_length - 2]
-        target_tokens = [tokenizer.cls_token] + target_tokens + [tokenizer.sep_token]
+            target_tokens = tokenizer.tokenize(example.target)[
+                : args.max_target_length - 2]
+        target_tokens = [tokenizer.cls_token] + \
+            target_tokens + [tokenizer.sep_token]
         target_ids = tokenizer.convert_tokens_to_ids(target_tokens)
         target_mask = [1] * len(target_ids)
         padding_length = args.max_target_length - len(target_ids)
@@ -138,19 +143,24 @@ def convert_examples_to_features(examples, tokenizer, args, stage=None):
                         [x.replace('\u0120', '_') for x in source_tokens]
                     )
                 )
-                logger.info('source_ids: {}'.format(' '.join(map(str, source_ids))))
-                logger.info('source_mask: {}'.format(' '.join(map(str, source_mask))))
+                logger.info('source_ids: {}'.format(
+                    ' '.join(map(str, source_ids))))
+                logger.info('source_mask: {}'.format(
+                    ' '.join(map(str, source_mask))))
 
                 logger.info(
                     'target_tokens: {}'.format(
                         [x.replace('\u0120', '_') for x in target_tokens]
                     )
                 )
-                logger.info('target_ids: {}'.format(' '.join(map(str, target_ids))))
-                logger.info('target_mask: {}'.format(' '.join(map(str, target_mask))))
+                logger.info('target_ids: {}'.format(
+                    ' '.join(map(str, target_ids))))
+                logger.info('target_mask: {}'.format(
+                    ' '.join(map(str, target_mask))))
 
         features.append(
-            InputFeatures(example_index, source_ids, target_ids, source_mask, target_mask,)
+            InputFeatures(example_index, source_ids,
+                          target_ids, source_mask, target_mask,)
         )
     return features
 
@@ -243,7 +253,8 @@ def main():
             'than this will be truncated, sequences shorter will be padded.',
         )
 
-        parser.add_argument('--do_train', action='store_true', help='Whether to run training.')
+        parser.add_argument('--do_train', action='store_true',
+                            help='Whether to run training.')
         parser.add_argument(
             '--do_eval', action='store_true', help='Whether to run eval on the dev set.'
         )
@@ -357,7 +368,8 @@ def main():
     )
 
     # budild model
-    encoder = model_class.from_pretrained(args.model_name_or_path, config=config)
+    encoder = model_class.from_pretrained(
+        args.model_name_or_path, config=config)
     decoder_layer = nn.TransformerDecoderLayer(
         d_model=config.hidden_size, nhead=config.num_attention_heads
     )
@@ -396,11 +408,13 @@ def main():
         train_features = convert_examples_to_features(
             train_examples, tokenizer, args, stage='train'
         )
-        all_source_ids = torch.tensor([f.source_ids for f in train_features], dtype=torch.long)
+        all_source_ids = torch.tensor(
+            [f.source_ids for f in train_features], dtype=torch.long)
         all_source_mask = torch.tensor(
             [f.source_mask for f in train_features], dtype=torch.long
         )
-        all_target_ids = torch.tensor([f.target_ids for f in train_features], dtype=torch.long)
+        all_target_ids = torch.tensor(
+            [f.target_ids for f in train_features], dtype=torch.long)
         all_target_mask = torch.tensor(
             [f.target_mask for f in train_features], dtype=torch.long
         )
@@ -439,7 +453,8 @@ def main():
             },
         ]
         t_total = (
-            len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs
+            len(train_dataloader) // args.gradient_accumulation_steps *
+            args.num_train_epochs
         )
         optimizer = AdamW(
             optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon
@@ -483,9 +498,11 @@ def main():
                     loss = loss / args.gradient_accumulation_steps
                 tr_loss += loss.item()
                 train_loss = round(
-                    tr_loss * args.gradient_accumulation_steps / (nb_tr_steps + 1), 4
+                    tr_loss * args.gradient_accumulation_steps /
+                    (nb_tr_steps + 1), 4
                 )
-                bar.set_description('epoch {} loss {}'.format(epoch, train_loss))
+                bar.set_description(
+                    'epoch {} loss {}'.format(epoch, train_loss))
                 nb_tr_examples += source_ids.size(0)
                 nb_tr_steps += 1
                 loss.backward()
@@ -564,26 +581,30 @@ def main():
                 logger.info('  ' + '*' * 20)
 
                 # save last checkpoint
-                last_output_dir = os.path.join(args.output_dir, 'checkpoint-last')
+                last_output_dir = os.path.join(
+                    args.output_dir, 'checkpoint-last')
                 if not os.path.exists(last_output_dir):
                     os.makedirs(last_output_dir)
                 model_to_save = (
                     model.module if hasattr(model, 'module') else model
                 )  # Only save the model it-self
-                output_model_file = os.path.join(last_output_dir, 'pytorch_model.bin')
+                output_model_file = os.path.join(
+                    last_output_dir, 'pytorch_model.bin')
                 torch.save(model_to_save.state_dict(), output_model_file)
                 if eval_loss < best_loss:
                     logger.info('  Best ppl:%s', round(np.exp(eval_loss), 5))
                     logger.info('  ' + '*' * 20)
                     best_loss = eval_loss
                     # Save best checkpoint for best ppl
-                    output_dir = os.path.join(args.output_dir, 'checkpoint-best-ppl')
+                    output_dir = os.path.join(
+                        args.output_dir, 'checkpoint-best-ppl')
                     if not os.path.exists(output_dir):
                         os.makedirs(output_dir)
                     model_to_save = (
                         model.module if hasattr(model, 'module') else model
                     )  # Only save the model it-self
-                    output_model_file = os.path.join(output_dir, 'pytorch_model.bin')
+                    output_model_file = os.path.join(
+                        output_dir, 'pytorch_model.bin')
                     torch.save(model_to_save.state_dict(), output_model_file)
 
                 # Calculate bleu
@@ -591,7 +612,8 @@ def main():
                     eval_examples, eval_data = dev_dataset['dev_bleu']
                 else:
                     eval_examples = read_examples(args.dev_filename)
-                    eval_examples = random.sample(eval_examples, min(1000, len(eval_examples)))
+                    eval_examples = random.sample(
+                        eval_examples, min(1000, len(eval_examples)))
                     eval_features = convert_examples_to_features(
                         eval_examples, tokenizer, args, stage='test'
                     )
@@ -623,7 +645,8 @@ def main():
                             t = list(t)
                             if 0 in t:
                                 t = t[: t.index(0)]
-                            text = tokenizer.decode(t, clean_up_tokenization_spaces=False)
+                            text = tokenizer.decode(
+                                t, clean_up_tokenization_spaces=False)
                             p.append(text)
                     break
                 model.train()
@@ -639,7 +662,8 @@ def main():
                 (goldMap, predictionMap) = bleu.computeMaps(
                     predictions, os.path.join(args.output_dir, 'dev.gold')
                 )
-                dev_bleu = round(bleu.bleuFromMaps(goldMap, predictionMap)[0], 2)
+                dev_bleu = round(bleu.bleuFromMaps(
+                    goldMap, predictionMap)[0], 2)
                 logger.info('  %s = %s ' % ('bleu-4', str(dev_bleu)))
                 logger.info('  ' + '*' * 20)
                 if dev_bleu > best_bleu:
@@ -647,13 +671,15 @@ def main():
                     logger.info('  ' + '*' * 20)
                     best_bleu = dev_bleu
                     # Save best checkpoint for best bleu
-                    output_dir = os.path.join(args.output_dir, 'checkpoint-best-bleu')
+                    output_dir = os.path.join(
+                        args.output_dir, 'checkpoint-best-bleu')
                     if not os.path.exists(output_dir):
                         os.makedirs(output_dir)
                     model_to_save = (
                         model.module if hasattr(model, 'module') else model
                     )  # Only save the model it-self
-                    output_model_file = os.path.join(output_dir, 'pytorch_model.bin')
+                    output_model_file = os.path.join(
+                        output_dir, 'pytorch_model.bin')
                     torch.save(model_to_save.state_dict(), output_model_file)
 
     if args.do_test:
@@ -688,7 +714,8 @@ def main():
                 batch = tuple(t.to(device) for t in batch)
                 source_ids, source_mask = batch
                 with torch.no_grad():
-                    preds = model(source_ids=source_ids, source_mask=source_mask, args=args)
+                    preds = model(source_ids=source_ids,
+                                  source_mask=source_mask, args=args)
                     for pred in preds:
                         multiple_results = []
                         for candidate in pred:
@@ -696,7 +723,8 @@ def main():
                             t = list(t)
                             if 0 in t:
                                 t = t[: t.index(0)]
-                            text = tokenizer.decode(t, clean_up_tokenization_spaces=False)
+                            text = tokenizer.decode(
+                                t, clean_up_tokenization_spaces=False)
                             multiple_results.append(text)
                         p.append(multiple_results.copy())
             model.train()
@@ -706,12 +734,14 @@ def main():
             for ref, gold in zip(p, eval_examples):
                 output_dict[str(gold.idx)] = (ref, gold.target)
             with open(
-                os.path.join(args.output_dir, 'test_{}_pred_gold.json'.format(idx)), 'w'
+                os.path.join(args.output_dir,
+                             'test_{}_pred_gold.json'.format(idx)), 'w'
             ) as f:
                 json.dump(output_dict, f, indent=2)
 
             (goldMap, predictionMap) = bleu.computeMaps_multiple(
-                os.path.join(args.output_dir, 'test_{}_pred_gold.json'.format(idx)),
+                os.path.join(args.output_dir,
+                             'test_{}_pred_gold.json'.format(idx)),
                 args.beam_size,
             )
             dev_bleu = round(bleu.bleuFromMaps(goldMap, predictionMap)[0], 2)

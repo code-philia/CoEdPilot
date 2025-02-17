@@ -17,13 +17,13 @@ score_set(s, testid, refids, n=4): Interface with dataset.py; calculate BLEU sco
 The reason for breaking the BLEU computation into three phases cook_refs(), cook_test(), and score_cooked() is to allow the caller to calculate BLEU scores for multiple test sets as efficiently as possible.
 """
 
-import re
 import xml.sax.saxutils
+import re
 import subprocess
 import sys
 import json
-import os
 import math
+import os
 
 # Added to bypass NIST-style pre-processing of hyp and ref files -- wade
 nonorm = 0
@@ -37,7 +37,8 @@ normalize1 = [
     (r'\n', ' '),  # join lines
     #    (r'(\d)\s+(?=\d)', r'\1'), # join digits
 ]
-normalize1 = [(re.compile(pattern), replace) for (pattern, replace) in normalize1]
+normalize1 = [(re.compile(pattern), replace)
+              for (pattern, replace) in normalize1]
 
 normalize2 = [
     # tokenize punctuation. apostrophe is missing
@@ -49,7 +50,8 @@ normalize2 = [
     # tokenize dash when preceded by a digit
     (r'([0-9])(-)', r'\1 \2 '),
 ]
-normalize2 = [(re.compile(pattern), replace) for (pattern, replace) in normalize2]
+normalize2 = [(re.compile(pattern), replace)
+              for (pattern, replace) in normalize2]
 
 
 def normalize(s):
@@ -76,7 +78,7 @@ def count_ngrams(words, n=4):
     counts = {}
     for k in range(1, n + 1):
         for i in range(len(words) - k + 1):
-            ngram = tuple(words[i : i + k])
+            ngram = tuple(words[i: i + k])
             counts[ngram] = counts.get(ngram, 0) + 1
     return counts
 
@@ -121,13 +123,15 @@ def cook_test(test, item, n=4):
     result['correct'] = [0] * n
     counts = count_ngrams(test, n)
     for ngram, count in counts.items():
-        result['correct'][len(ngram) - 1] += min(refmaxcounts.get(ngram, 0), count)
+        result['correct'][len(
+            ngram) - 1] += min(refmaxcounts.get(ngram, 0), count)
 
     return result
 
 
 def score_cooked(allcomps, n=4, ground=0, smooth=1):
-    totalcomps = {'testlen': 0, 'reflen': 0, 'guess': [0] * n, 'correct': [0] * n}
+    totalcomps = {'testlen': 0, 'reflen': 0,
+                  'guess': [0] * n, 'correct': [0] * n}
     for comps in allcomps:
         for key in ['testlen', 'reflen']:
             totalcomps[key] += comps[key]
@@ -148,12 +152,14 @@ def score_cooked(allcomps, n=4, ground=0, smooth=1):
         if guess == 0:
             all_bleus.append(-10000000)
         else:
-            all_bleus.append(math.log(correct + sys.float_info.min) - math.log(guess))
+            all_bleus.append(
+                math.log(correct + sys.float_info.min) - math.log(guess))
 
     logbleu /= float(n)
     all_bleus.insert(0, logbleu)
 
-    brevPenalty = min(0, 1 - float(totalcomps['reflen'] + 1) / (totalcomps['testlen'] + 1))
+    brevPenalty = min(
+        0, 1 - float(totalcomps['reflen'] + 1) / (totalcomps['testlen'] + 1))
     for i in range(len(all_bleus)):
         if i == 0:
             all_bleus[i] += brevPenalty
