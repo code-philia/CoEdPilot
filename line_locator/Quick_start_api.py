@@ -7,7 +7,9 @@ from run import Example, convert_examples_to_features
 from transformers import RobertaConfig, RobertaModel, RobertaTokenizer
 
 
-def construct_input(code_window: list[str], prompt: str, prior_edits: list[dict]) -> str:
+def construct_input(
+    code_window: list[str], prompt: str, prior_edits: list[dict]
+) -> str:
     """
     Constructs the input string for the line locator model.
     """
@@ -21,11 +23,12 @@ def construct_input(code_window: list[str], prompt: str, prior_edits: list[dict]
     return input_str
 
 
-def line_locator_api(code_window: list[str], prompt: str, prior_edits: list[dict], language: str) -> list[str]:
+def line_locator_api(
+    code_window: list[str], prompt: str, prior_edits: list[dict], language: str
+) -> list[str]:
     assert language in ["python", "go", "java", "javascript", "typescript"]
     config = RobertaConfig.from_pretrained("microsoft/codebert-base")
-    encoder = RobertaModel.from_pretrained(
-        "microsoft/codebert-base", config=config)
+    encoder = RobertaModel.from_pretrained("microsoft/codebert-base", config=config)
     tokenizer = RobertaTokenizer.from_pretrained("microsoft/codebert-base")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -43,11 +46,15 @@ def line_locator_api(code_window: list[str], prompt: str, prior_edits: list[dict
         eos_id=tokenizer.sep_token_id,
         mask_id=tokenizer.mask_token_id,
     )
-    model.load_state_dict(torch.load(
-        f"model/{language}/checkpoint-best-bleu/pytorch_model.bin", map_location=device))
+    model.load_state_dict(
+        torch.load(
+            f"model/{language}/checkpoint-best-bleu/pytorch_model.bin",
+            map_location=device,
+        )
+    )
 
     input_str = construct_input(code_window, prompt, prior_edits)
-    examples = [Example(idx=0, source=input_str, target=[""]*len(code_window))]
+    examples = [Example(idx=0, source=input_str, target=[""] * len(code_window))]
 
     inter_features = convert_examples_to_features(
         examples=examples,
@@ -74,7 +81,7 @@ def line_locator_api(code_window: list[str], prompt: str, prior_edits: list[dict
         target_ids=all_target_ids,
         target_mask=all_target_mask,
         train=False,
-    ).to('cpu')
+    ).to("cpu")
 
     output = []
     for j in range(lm_logits.shape[1]):  # for every token
