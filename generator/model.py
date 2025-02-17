@@ -97,7 +97,7 @@ class Seq2Seq(nn.Module):
             # Predict
             self.beam_size = args.beam_size
             preds = []
-            zero = torch.cuda.LongTensor(1).fill_(0)
+            zero = torch.cuda.LongTensor(1).fill_(0) if torch.cuda.is_available() else torch.LongTensor(1).fill_(0)
             for i in range(source_ids.shape[0]):
                 context = encoder_output[:, i : i + 1]
                 context_mask = source_mask[i : i + 1, :]
@@ -145,7 +145,7 @@ class Seq2Seq(nn.Module):
 class Beam(object):
     def __init__(self, size, sos, eos):
         self.size = size
-        self.tt = torch.cuda
+        self.tt = torch.cuda if torch.cuda.is_available() else torch
         # The score for each translation on the beam.
         self.scores = self.tt.FloatTensor(size).zero_()
         # The backpointers at each time-step.

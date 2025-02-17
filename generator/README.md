@@ -14,6 +14,15 @@
     * dataset/{lang}/dev.jsonl: validation dataset
     * dataset/{lang}/test.jsonl: test dataset
 
+## Download
+Download model and dataset by runing download script:
+```shell
+bash download.sh
+```
+
+## Quick start 
+Please refer to `Quick_start.ipynb` for quick start.
+
 ## Key results
 |  Language  |  EM@1 |  EM@3 |  EM@5 | EM@10 | BLEU@1| BLEU@3| BLEU@5| BLEU@10|
 |------------|-------|-------|-------|-------|-------|-------|-------|-------|
