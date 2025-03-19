@@ -18,8 +18,10 @@ def construct_input(
         input_str += f"{label} {line}"
     input_str += f"</s>{prompt}</s>"
     for edit in prior_edits:
-        if edit["before"] != "":
-            input_str += f"remove {edit['before']} </s> add{edit['after']}</s>"
+        if edit["code_before"] != "":
+            input_str += f"remove {''.join(edit['code_before'])} </s> add{''.join(edit['code_after'])}</s>"
+        else:
+            input_str += f"add{''.join(edit['code_after'])}</s>"
     return input_str
 
 
