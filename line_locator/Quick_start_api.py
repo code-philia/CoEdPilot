@@ -28,7 +28,8 @@ def line_locator_api(
 ) -> list[str]:
     assert language in ['python', 'go', 'java', 'javascript', 'typescript']
     config = RobertaConfig.from_pretrained('microsoft/codebert-base')
-    encoder = RobertaModel.from_pretrained('microsoft/codebert-base', config=config)
+    encoder = RobertaModel.from_pretrained(
+        'microsoft/codebert-base', config=config)
     tokenizer = RobertaTokenizer.from_pretrained('microsoft/codebert-base')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -53,15 +54,20 @@ def line_locator_api(
     )
 
     input_str = construct_input(code_window, prompt, prior_edits)
-    examples = [Example(idx=0, source=input_str, target=[""] * len(code_window))]
+    examples = [Example(idx=0, source=input_str,
+                        target=[""] * len(code_window))]
 
     inter_features = convert_examples_to_features(
         examples=examples, tokenizer=tokenizer, stage='test', args=args,
     )
-    all_source_ids = torch.tensor([f.source_ids for f in inter_features], dtype=torch.long)
-    all_source_mask = torch.tensor([f.source_mask for f in inter_features], dtype=torch.long)
-    all_target_ids = torch.tensor([f.target_ids for f in inter_features], dtype=torch.long)
-    all_target_mask = torch.tensor([f.target_mask for f in inter_features], dtype=torch.long)
+    all_source_ids = torch.tensor(
+        [f.source_ids for f in inter_features], dtype=torch.long)
+    all_source_mask = torch.tensor(
+        [f.source_mask for f in inter_features], dtype=torch.long)
+    all_target_ids = torch.tensor(
+        [f.target_ids for f in inter_features], dtype=torch.long)
+    all_target_mask = torch.tensor(
+        [f.target_mask for f in inter_features], dtype=torch.long)
 
     lm_logits = model(
         source_ids=all_source_ids,
@@ -86,6 +92,7 @@ def line_locator_api(
 if __name__ == '__main__':
     code_window = ['def hello_world():', "    print('Hello, World!')"]
     prompt = 'add a new line'
-    prior_edits = [{'code_before': [], 'code_after': ["print('Hello, World!')"]}]
+    prior_edits = [
+        {'code_before': [], 'code_after': ["print('Hello, World!')"]}]
     language = 'python'
     line_locator_api(code_window, prompt, prior_edits, language)

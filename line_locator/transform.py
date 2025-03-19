@@ -23,8 +23,10 @@ def main(args):
         )
 
     train_dataset_to_idx = int(len(transformed_dataset) * args.train_ratio)
-    val_dataset_to_idx = train_dataset_to_idx + int(len(transformed_dataset) * args.val_ratio)
-    test_dataset_to_idx = val_dataset_to_idx + int(len(transformed_dataset) * args.test_ratio)
+    val_dataset_to_idx = train_dataset_to_idx + \
+        int(len(transformed_dataset) * args.val_ratio)
+    test_dataset_to_idx = val_dataset_to_idx + \
+        int(len(transformed_dataset) * args.test_ratio)
 
     os.makedirs('dataset', exist_ok=True)
     with open('dataset/train.jsonl', 'w') as f:
@@ -44,8 +46,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Transform dataset into CoEdPilot prompt format and split into training, validation, and test sets.'
     )
-    parser.add_argument('train_ratio', type=int, help='Ratio of the training set')
-    parser.add_argument('val_ratio', type=int, help='Ratio of the validation set')
+    parser.add_argument('train_ratio', type=int,
+                        help='Ratio of the training set')
+    parser.add_argument('val_ratio', type=int,
+                        help='Ratio of the validation set')
     parser.add_argument('test_ratio', type=int, help='Ratio of the test set')
 
     args = parser.parse_args()

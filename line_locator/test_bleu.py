@@ -4,9 +4,11 @@ from bleu import normalize, count_ngrams, cook_refs, cook_test, bleuFromMaps, bl
 
 class TestBLEUFunctions(unittest.TestCase):
     def test_normalize(self):
-        self.assertEqual(normalize('This, is a test!'), ['this', ',', 'is', 'a', 'test', '!'])
+        self.assertEqual(normalize('This, is a test!'), [
+                         'this', ',', 'is', 'a', 'test', '!'])
         self.assertEqual(normalize('Hello\nWorld'), ['hello', 'world'])
-        self.assertEqual(normalize('No-Extra    Spaces'), ['no-extra', 'spaces'])
+        self.assertEqual(normalize('No-Extra    Spaces'),
+                         ['no-extra', 'spaces'])
 
     def test_count_ngrams(self):
         words = ['this', 'is', 'a', 'a', 'test']
