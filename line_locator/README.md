@@ -35,8 +35,8 @@ Please refer to `Quick_start.ipynb` for quick start.
 ## As baseline
 1. Prepare `custom_input.jsonl` file as input, each element of format:
     > [!NOTE]
-    >
     > The `edit_labels` and `code_window` should have the same length
+    
     ```python
     {
         "edit_labels": list["replace" | "keep" | "add"]. Each element is an edit operation label,
