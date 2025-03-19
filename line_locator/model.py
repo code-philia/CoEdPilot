@@ -40,7 +40,8 @@ class Seq2Seq(nn.Module):
         self.config = config
         self.register_buffer('bias', torch.tril(torch.ones(2048, 2048)))
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        self.lm_head = nn.Linear(
+            config.hidden_size, config.vocab_size, bias=False)
         self.lsm = nn.LogSoftmax(dim=-1)
         self.tie_weights()
 
@@ -63,14 +64,16 @@ class Seq2Seq(nn.Module):
         """Make sure we are sharing the input and output embeddings.
         Export to TorchScript can't handle parameter sharing so we are cloning them instead.
         """
-        self._tie_or_clone_weights(self.lm_head, self.encoder.embeddings.word_embeddings)
+        self._tie_or_clone_weights(
+            self.lm_head, self.encoder.embeddings.word_embeddings)
 
     def forward(
         self, source_ids=None, source_mask=None, target_ids=None, target_mask=None, train=True,
     ):
         outputs = self.encoder(source_ids, attention_mask=source_mask)
         encoder_output = outputs[0].permute([1, 0, 2]).contiguous()
-        hidden_states = torch.tanh(self.dense(encoder_output)).permute([1, 0, 2]).contiguous()
+        hidden_states = torch.tanh(self.dense(
+            encoder_output)).permute([1, 0, 2]).contiguous()
         lm_logits = self.lm_head(hidden_states).contiguous()
         if train:
             # Flatten the tokens
