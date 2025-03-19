@@ -19,9 +19,12 @@ def main(args):
             if edit["code_after"] != []:
                 code_tokens += "</s> add " + "".join(edit["code_after"])
         code_tokens += "</s>"
-        
+
         transformed_dataset.append(
-            {"docstring_tokens": "".join(sample["after_edit"]), "code_tokens": code_tokens}
+            {
+                "docstring_tokens": "".join(sample["after_edit"]),
+                "code_tokens": code_tokens,
+            }
         )
 
     train_dataset_to_idx = int(len(transformed_dataset) * args.train_ratio)
