@@ -28,7 +28,7 @@ def train_embedding_model(
     """
     Train the embedding model using the siamese network approach.
     """
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -39,7 +39,7 @@ def train_embedding_model(
         # 1. embed data samples to find the most similar pair (prior edit, file
         # sliding window)
         pbar = tqdm(
-            train_dataloader, desc=f'Find most similar pair for epoch {i+1} / {epochs}'
+            train_dataloader, desc=f"Find most similar pair for epoch {i+1} / {epochs}"
         )
         with torch.no_grad():
             model.eval()
@@ -84,7 +84,7 @@ def train_embedding_model(
 
         # 2. train the model with the most similar pair
         core_dataloader = DataLoader(core_dataset, batch_size=16, shuffle=True)
-        pbar = tqdm(core_dataloader, desc=f'Train epoch {i+1} / {epochs}')
+        pbar = tqdm(core_dataloader, desc=f"Train epoch {i+1} / {epochs}")
         model.train()
         for batch in pbar:
             # edit_input_ids: [batch_size, max_length]
@@ -113,7 +113,9 @@ def train_embedding_model(
 
             # contrastive loss between edit_embedding and
             # max_similiarity_embedding
-            loss = criterion(edit_embedding, max_similiarity_embedding, label.squeeze(1))
+            loss = criterion(
+                edit_embedding, max_similiarity_embedding, label.squeeze(1)
+            )
 
             # backprop
             optimizer.zero_grad()
@@ -122,12 +124,12 @@ def train_embedding_model(
             pbar.set_postfix(loss=loss.item())
 
         # save model
-        if not os.path.exists(f'./model/{lang}'):
-            os.makedirs(f'./model/{lang}')
-        torch.save(model.state_dict(), f'./model/{lang}/embedding_model.bin')
+        if not os.path.exists(f"./model/{lang}"):
+            os.makedirs(f"./model/{lang}")
+        torch.save(model.state_dict(), f"./model/{lang}/embedding_model.bin")
 
         # evaluate
-        evaluate_embedding_model(model, dev_dataloader, 'validation')
+        evaluate_embedding_model(model, dev_dataloader, "validation")
 
 
 def load_siamese_data(
@@ -144,23 +146,27 @@ def load_siamese_data(
         return windows
 
     tensor_dataset = []
-    for sample_idx, sample in enumerate(tqdm(dataset, desc='Loading data')):
-        hunk = sample['hunk']
-        file = sample['file']
+    for sample_idx, sample in enumerate(tqdm(dataset, desc="Loading data")):
+        hunk = sample["hunk"]
+        file = sample["file"]
         file_windows = split2window(file.splitlines(True))
-        input = ["".join(hunk['code_window'])] + file_windows
+        input = ["".join(hunk["code_window"])] + file_windows
         tensor_input = tokenizer(
-            input, return_tensors='pt', padding='max_length', truncation=True, max_length=512,
+            input,
+            return_tensors="pt",
+            padding="max_length",
+            truncation=True,
+            max_length=512,
         )
-        if sample['label'] == 0:
+        if sample["label"] == 0:
             label = -1
         else:
             label = 1
         tensor_dataset.append(
             (
-                torch.tensor([sample['dependency_score'][0]]),
-                tensor_input['input_ids'],
-                tensor_input['attention_mask'],
+                torch.tensor([sample["dependency_score"][0]]),
+                tensor_input["input_ids"],
+                tensor_input["attention_mask"],
                 torch.tensor([label], dtype=torch.float),
             )
         )
@@ -174,13 +180,13 @@ def load_siamese_data(
 def evaluate_embedding_model(
     model: RobertaModel, dataloader: DataLoader, mode: str
 ) -> np.array:
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     model.eval()
 
     preds = []
     golds = []
-    for batch in tqdm(dataloader, desc='Evaluating'):
+    for batch in tqdm(dataloader, desc="Evaluating"):
         _, input_ids, attn_masks, label = [b.to(device) for b in batch]
         input_ids = input_ids.squeeze(0)
         attn_masks = attn_masks.squeeze(0)
@@ -191,9 +197,9 @@ def evaluate_embedding_model(
         all_embeddings = []
         with torch.no_grad():
             for input_ids_in_batch, attn_masks_in_batch in dataloader_in_batch:
-                embeddings = model(input_ids_in_batch, attn_masks_in_batch).last_hidden_state[
-                    :, 0, :
-                ]
+                embeddings = model(
+                    input_ids_in_batch, attn_masks_in_batch
+                ).last_hidden_state[:, 0, :]
                 all_embeddings.append(embeddings)
             all_embeddings = torch.cat(all_embeddings, dim=0)
 
