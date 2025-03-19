@@ -23,7 +23,7 @@ jobs:
           python-version: 3.10.16
 
       - name: Install Python dependencies
-        run: pip install black autopep8 oitnb
+        run: pip install black
 
       - name: Run linters
         uses: wearerequired/lint-action@v2
@@ -31,7 +31,3 @@ jobs:
           auto_fix: true
           black: true
           black_auto_fix: true
-          autopep8: true
-          autopop8_auto_fix: true
-          oitnb: true
-          oitnb_auto_fix: true
