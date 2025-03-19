@@ -16,8 +16,10 @@ def construct_input(code_window: list[str], prompt: str, prior_edits: list[dict]
         input_str += f'<mask> {line}'
     input_str += f'</s> {prompt} </s>'
     for edit in prior_edits:
-        if edit['before'] != "":
-            input_str += f"remove {edit['before']} </s> add{edit['after']}</s>"
+        if edit['code_before'] != []:
+            input_str += f"remove {''.join(edit['code_before'])} </s> add {''.join(edit['code_after'])}</s>"
+        else:
+            input_str += f"add {''.join(edit['code_after'])}</s>"
     return input_str
 
 
@@ -84,6 +86,6 @@ def line_locator_api(
 if __name__ == '__main__':
     code_window = ['def hello_world():', "    print('Hello, World!')"]
     prompt = 'add a new line'
-    prior_edits = [{'before': "", 'after': "print('Hello, World!')"}]
+    prior_edits = [{'code_before': [], 'code_after': ["print('Hello, World!')"]}]
     language = 'python'
     line_locator_api(code_window, prompt, prior_edits, language)

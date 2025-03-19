@@ -47,3 +47,22 @@ conda activate coedpilot
 python -m pip install -r requirements.txt
 ```
 
+## ⚖️ Our work as baselines
+* Baseline for **stand alone edit localization task**: refer to [`/line_locator/README.md`](line_locator/README.md) 
+   
+
+* Baseline for **stand alone edit generation task**: refer to [`/generator/README.md`](generator/README.md) 
+
+## ✍️ Citation
+
+If you find our work helpful, please consider citing our paper:
+
+```bibtex
+@inproceedings{liu2024coedpilot,
+  title={CoEdPilot: Recommending Code Edits with Learned Prior Edit Relevance, Project-wise Awareness, and Interactive Nature},
+  author={Liu, Chenyan and Cai, Yufan and Lin, Yun and Huang, Yuhuan and Pei, Yunrui and Jiang, Bo and Yang, Ping and Dong, Jin Song and Mei, Hong},
+  booktitle={Proceedings of the 33rd ACM SIGSOFT International Symposium on Software Testing and Analysis},
+  pages={466--478},
+  year={2024}
+}
+```
