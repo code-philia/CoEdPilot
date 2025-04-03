@@ -7,6 +7,7 @@ from model import Seq2Seq
 from run import Example, convert_examples_to_features
 from transformers import RobertaConfig, RobertaModel, RobertaTokenizer
 
+
 def construct_input(
     code_window: list[str], prompt: str, prior_edits: list[dict]
 ) -> str:
@@ -102,28 +103,31 @@ def line_locator_api(
 
     return output
 
-def download(model_dir: str, lang: str) -> int:
-    lang_model_dir = f'{model_dir}/{lang}'
 
-    generator_model_base_url = f'https://huggingface.co/code-philia/CoEdPilot-line-locator/resolve/main/{lang}'
+def download(model_dir: str, lang: str) -> int:
+    lang_model_dir = f"{model_dir}/{lang}"
+
+    generator_model_base_url = (
+        f"https://huggingface.co/code-philia/CoEdPilot-line-locator/resolve/main/{lang}"
+    )
 
     download_list = [
-        [f'{generator_model_base_url}/checkpoint-best-bleu/pytorch_model.bin',
-            'locator_model.bin'],
+        [
+            f"{generator_model_base_url}/checkpoint-best-bleu/pytorch_model.bin",
+            "locator_model.bin",
+        ],
     ]
     for it in download_list:
-        print(f'Cloning models for \'{lang}\' to {lang_model_dir}/{it[1]}...')
-        res = download_file(
-            url=it[0],
-            target=f'{lang_model_dir}/{it[1]}'
-        )
+        print(f"Cloning models for '{lang}' to {lang_model_dir}/{it[1]}...")
+        res = download_file(url=it[0], target=f"{lang_model_dir}/{it[1]}")
         if res != 0:
             return 2
-        print(f'{it[1]} downloaded.')
+        print(f"{it[1]} downloaded.")
 
-    print(f'All models for {lang} is ready.')
+    print(f"All models for {lang} is ready.")
 
     return 0
+
 
 def download_file(url: str, target: str) -> int:
     """
@@ -133,10 +137,11 @@ def download_file(url: str, target: str) -> int:
     if response.status_code != 200:
         print(f"Failed to download: {url}")
         return 1
-    with open(target, 'wb') as f:
+    with open(target, "wb") as f:
         f.write(response.content)
 
     return 0
+
 
 if __name__ == "__main__":
     code_window = ["def hello_world():", "    print('Hello, World!')"]

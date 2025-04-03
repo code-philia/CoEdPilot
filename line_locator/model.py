@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch
 
+
 class Seq2Seq(nn.Module):
     """
     Build Seqence-to-Sequence.
