@@ -1,11 +1,11 @@
+import os
 import torch
 import argparse
+import requests
 
 from model import Seq2Seq
-from torch.utils.data import TensorDataset
 from run import Example, convert_examples_to_features
 from transformers import RobertaConfig, RobertaModel, RobertaTokenizer
-
 
 def construct_input(
     code_window: list[str], prompt: str, prior_edits: list[dict]
@@ -48,9 +48,14 @@ def line_locator_api(
         eos_id=tokenizer.sep_token_id,
         mask_id=tokenizer.mask_token_id,
     )
+    if not os.path.exists(f"model/{language}/locator_model.bin"):
+        # download model from huggingface
+        os.makedirs(f"model/{language}", exist_ok=True)
+        download("model", language)
+
     model.load_state_dict(
         torch.load(
-            f"model/{language}/checkpoint-best-bleu/pytorch_model.bin",
+            f"model/{language}/locator_model.bin",
             map_location=device,
         )
     )
@@ -95,8 +100,43 @@ def line_locator_api(
                 )
             )
 
-    print(output)
+    return output
 
+def download(model_dir: str, lang: str) -> int:
+    lang_model_dir = f'{model_dir}/{lang}'
+
+    generator_model_base_url = f'https://huggingface.co/code-philia/CoEdPilot-line-locator/resolve/main/{lang}'
+
+    download_list = [
+        [f'{generator_model_base_url}/checkpoint-best-bleu/pytorch_model.bin',
+            'locator_model.bin'],
+    ]
+    for it in download_list:
+        print(f'Cloning models for \'{lang}\' to {lang_model_dir}/{it[1]}...')
+        res = download_file(
+            url=it[0],
+            target=f'{lang_model_dir}/{it[1]}'
+        )
+        if res != 0:
+            return 2
+        print(f'{it[1]} downloaded.')
+
+    print(f'All models for {lang} is ready.')
+
+    return 0
+
+def download_file(url: str, target: str) -> int:
+    """
+    Download a single file from `url`, save to file `target`.
+    """
+    response = requests.get(url)
+    if response.status_code != 200:
+        print(f"Failed to download: {url}")
+        return 1
+    with open(target, 'wb') as f:
+        f.write(response.content)
+
+    return 0
 
 if __name__ == "__main__":
     code_window = ["def hello_world():", "    print('Hello, World!')"]

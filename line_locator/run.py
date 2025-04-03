@@ -6,33 +6,27 @@ import json
 import logging
 import numpy as np
 import os
-import pickle
 import random
-import sys
 
 import torch
-import torch.nn as nn
 from io import open
-from itertools import cycle
 
 from model import Seq2Seq
 from torch.utils.data import (
     DataLoader,
-    Dataset,
     RandomSampler,
     SequentialSampler,
     TensorDataset,
 )
 from torch.utils.data.distributed import DistributedSampler
-from tqdm import trange, tqdm
+from tqdm import tqdm
 
 from transformers import (
     AdamW,
     get_linear_schedule_with_warmup,
     RobertaConfig,
     RobertaModel,
-    RobertaTokenizer,
-    WEIGHTS_NAME,
+    RobertaTokenizer
 )
 
 import bleu
